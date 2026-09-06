@@ -1,0 +1,62 @@
+{
+  "schema_version": 1,
+  "note": "Synthetic run receipts; no provider or private task data.",
+  "runs": [
+    {
+      "run_id": "a1",
+      "task_id": "task-1",
+      "policy_id": "no-compression",
+      "success": true,
+      "provider_bill_usd": 1.0,
+      "tool_calls": 8,
+      "retrieval_calls": 3,
+      "reacquisition_calls": 0,
+      "retry_count": 0,
+      "compression_calls": 0,
+      "wall_time_ms": 10000
+    },
+    {
+      "run_id": "a2",
+      "task_id": "task-2",
+      "policy_id": "no-compression",
+      "success": true,
+      "provider_bill_usd": 1.1,
+      "tool_calls": 9,
+      "retrieval_calls": 3,
+      "reacquisition_calls": 0,
+      "retry_count": 0,
+      "compression_calls": 0,
+      "wall_time_ms": 11000
+    },
+    {
+      "run_id": "b1",
+      "task_id": "task-1",
+      "policy_id": "aggressive-compression",
+      "success": true,
+      "provider_bill_usd": 0.72,
+      "reacquisition_cost_usd": 0.1,
+      "tool_calls": 12,
+      "retrieval_calls": 7,
+      "reacquisition_calls": 4,
+      "retry_count": 0,
+      "compression_calls": 2,
+      "wall_time_ms": 13000
+    },
+    {
+      "run_id": "b2",
+      "task_id": "task-2",
+      "policy_id": "aggressive-compression",
+      "success": false,
+      "provider_bill_usd": 0.75,
+      "reacquisition_cost_usd": 0.12,
+      "retry_cost_usd": 0.2,
+      "failure_cost_usd": 0.3,
+      "tool_calls": 15,
+      "retrieval_calls": 9,
+      "reacquisition_calls": 5,
+      "retry_count": 2,
+      "compression_calls": 2,
+      "wall_time_ms": 18000
+    }
+  ]
+}

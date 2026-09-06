@@ -1,135 +1,257 @@
-# L4 记忆与档案的上下文经济学
+# L4 记忆、档案与持久状态的上下文经济学
 
-> 2026-08-19 · SJF × Hermes。本模块是 THM（xngg1021/thm-tiered-hot-memory，设计理论）与
-> context-economics（定价与缓存机制）两套研究的交叉补全：把 THM 目标函数
-> `E[任务成功率] − λ1·注入成本 − λ2·注意力稀释 − λ3·干扰税` 中的 λ 从符号标定为数字。
-> 数据来源：三 profile 本地实测（profile 已匿名化）+ Hermes 源码 + Kimi 官方文档。token 换算沿用 real_model.py
-> 校准值 2.13 字符/token；定价 kimi-k3：输入 $3/M、缓存读 $0.3/M、输出 $15/M。
+> 原始研究：2026-08-19 · SJF × Hermes  
+> correctness hardening：2026-09-07  
+> 本层连接 THM 的常驻/按需记忆问题与 Context Economics 的 provider/harness 成本模型。
 
-## 一、λ1 标定：T0 热层的驻留租金
+本文件保留 2026-08-19 的本机测量，但把“本机测量”“当前 Hermes 源码行为”“provider 文档”和“模型推导”严格分开。旧版最重要的勘误是：**普通 mid-session memory write 不再被视为必然触发当前会话 prompt-cache 失效。**
 
-实测（2026-08-19，三 profile memories/ 目录）：
+## 一、T0 的驻留租金：保留原测量，但不把“租金小”解释成“容量不重要”
 
-| profile | MEMORY.md | USER.md | 合计字符 | 合计 token | 每轮租金(命中) | 每轮租金(未命中) |
-|---|---|---|---|---|---|---|
-| P1（主 profile） | 3,744 | 1,201 | 4,945 | ≈2,322 | $0.00070 | $0.00697 |
+2026-08-19 三 profile 本地测量：
+
+| profile | MEMORY.md | USER.md | 合计字符 | 估算 token | 每轮租金（$0.3/M 命中） | 每轮租金（$3/M 未命中） |
+|---|---:|---:|---:|---:|---:|---:|
+| P1 | 3,744 | 1,201 | 4,945 | ≈2,322 | $0.00070 | $0.00697 |
 | P2 | 0 | 541 | 541 | ≈254 | $0.00008 | $0.00076 |
 | P3 | 0 | 211 | 211 | ≈99 | $0.00003 | $0.00030 |
 
-租金公式（每轮）：`rent = T0_tokens × p_eff`，p_eff 命中时 $0.3/M、未命中 $3/M。
+这里的 token 是按当时 `real_model.py` 的 2.13 chars/token aggregate calibration 推算，不是 tokenizer ground truth。
 
-- default 热层 100 轮租金：$0.070（全程命中）~ $0.697（全程未命中）。
-- 量级判断：相对会话本体（30-45 万 token 峰值）的平方项成本，T0 租金是小数——
-  **热层"装满"本身不是经济问题**，3,750 字符预算不构成需要节省的对象。
-  λ1 的真正事件成本不在驻留，在写入（见下节）。
-  （预算数注记：3,750 为原设计所述数值，上游官方默认是 2,200/1,375，可由配置覆盖，
-  本机实际值以 memory 工具运行时返回为准；具体数字不影响本节结论方向。）
+局部租金公式仍成立：
 
-### 理论依据注记
-
-热层容量设计的认知科学佐证来自两条经典研究：Cowan (2001) 的 4±1 组块容量上限
-（对 Miller 7±2 的现代修正），以及 Peterson & Peterson (1959) 的短时记忆约 18 秒
-无复述衰减。设计推论是：热层瓶颈是"可有效利用的事实数"而非字节数，组块化（把
-相关事实压缩成高密度条目）是不扩容前提下提升有效容量的手段。
-
-层次区别要分清：3,750/2,350 两个预算数字本身是 Hermes 运行时注入预算的实测值
-（2026-08-28 由官方默认 2,200/1,375 修正而来），论文佐证的是设计逻辑，不是具体数字。
-
-- 落地缺口（非研究问题）：P2/P3 的 MEMORY.md 为 0 字符，THM 框架已同步但热层无内容。
-
-## 二、记忆写入的缓存断点成本（本模块核心新结论）
-
-### 机制
-
-Kimi Context Caching 官方文档（platform.kimi.com/docs/guide/use-context-caching-feature-of-kimi-api）：
-对所有请求自动启用，识别重复的**初始上下文**（system prompt、工具定义等），
-要求逐字节一致的前缀，≥256 token 才可命中；无需管理 TTL（系统管理）。
-Kimi 论坛官方答复补充：后端多集群，未指定 `prompt_cache_key` 时负载均衡可能路由到
-不持有该 KV 的集群造成随机 miss。
-
-记忆写入改变 volatile 尾带的字节 → 最长匹配前缀从"全长"退化为"稳定头" →
-**下一轮把整个尾带 + 全部对话历史按全价 re-prefill 一次**（再往后恢复正常命中）。
-
-### 定价
-
-```
-W ≈ (S + H) × (p_in − p_cache) ≈ H × $2.7/M     (H≫S，H=对话历史 token)
+```text
+rent_per_turn = resident_tokens * p_eff
+p_eff = (1-rho)*p_in + rho*p_cache
 ```
 
-| 会话规模 H | 一次中途写入的隐形成本 | 相当于 default 整个 T0 块的驻留轮数 |
-|---|---|---|
-| 10 万 | $0.27 | ≈390 轮 |
-| 20 万 | $0.54 | ≈775 轮 |
-| 45 万（本机历史峰值） | $1.22 | ≈1,750 轮 |
+但“热层美元租金很小”只回答 **billing**。它没有回答：
 
-**一次随手中途写入，烧掉的热层租金当量以"百轮"计。**
+- 条目是否过期；
+- 是否与别的 profile/环境冲突；
+- 是否挤占更有价值的事实；
+- 是否制造注意力干扰；
+- 是否让模型错误泛化；
+- 用户明确禁止/偏好是否被保真。
 
-### 写入时机守则（由此推出的操作纪律）
+因此，**T0 容量约束仍然重要，只是它主要是认知与正确性约束，而不一定是美元约束。**
 
-1. **批量写**：memory 工具的 operations 数组一次完成全部增删改（其官方设计即如此），
-   N 条变更只付一次断点费，不是 N 次。
-2. **早写或末写**：会话早期 H 小（断点费低）；最后一轮之后没有下一轮（断点费为零）。
-   长会话（H>10 万）中途避免零散单条写。
-3. **正确性优先**：重要纠正（用户明确纠偏、事故级事实）不因省断点费而拖延——
-   该守则约束的是"随手记"，不是"该记的"。
-4. 上限声明：若该轮缓存反正要 miss（集群路由/TTL 驱逐），写入的增量成本为零；
-   W 是"缓存本可命中"情形下的机会成本。
+### 预算来源
 
-## 三、注入位置：源码级实证（结论：已经最优，无需改动）
+Hermes 上游默认值曾为 `MEMORY.md 2200 chars / USER.md 1375 chars`，可被配置覆盖；本机配置历史上出现过更高运行时预算。公开文档不得把某次本机 override 写成 universal default。
 
-Hermes 源码直接证据：
+具体运行预算应由当时版本的 memory tool / config 读取，并与 exact Hermes revision 一起记录。
 
-- `agent/system_prompt.py:20-21`（模块头注释）：系统提示显式分两层——
-  stable（身份、工具说明、行为准则）+ **volatile（skills 索引、memory 快照、USER.md、
-  外部记忆块、时间戳/会话/模型行）**。第 347-348 行重申同一分层。
-- `agent/system_prompt.py:782-789`：memory 块与 user 块渲染进 volatile 尾带。
-- `agent/prompt_cache_boundary.py`：Hermes 已为 Anthropic 显式缓存做"稳定前缀注册 +
-  断点放置在稳定/易变边界"的工程（#81867），设计意图与上述分层一致。
+## 二、关键勘误：普通 memory write ≠ 当前 session prompt rebuild
 
-两个推论：
+当前 Hermes 文档/源码说明：
 
-1. **缓存友好**：记忆变更只使改动点之后失效，静态大头（工具/skills/准则）仍然命中——
-   断点费的大头是对话历史 H，不是系统提示本身。
-2. **位置即性能**：volatile 尾带恰好位于上下文的近因优势区（lost-in-the-middle，
-   arXiv:2307.03172），热层记忆放在全提示词尾部对召回是有利位置。
-   THM 综述担心的"系统提示内部位置效应"在现有布局下是自然解，免费获得。
+> `MEMORY.md` 与 `USER.md` 在 session start 被捕获成 frozen system-prompt snapshot。中途 memory tool 写入会立即落盘，但不会改写当前 session 已冻结的 system prompt；新的快照在之后的 session start（以及会重新构建 prompt 的特定路径）生效。
 
-## 四、开放问题#3 结题：跨 profile 前缀共享
+所以旧版链条：
 
-原问题：P1/P2/P3 三个 bot 系统提示若对齐，可否共享缓存前缀？
+```text
+memory write
+ -> volatile system-prompt bytes change
+ -> next request prefix changes
+ -> all conversation history re-prefill
+```
 
-核实与评估：
+对当前 Hermes **不成立**。
 
-- Kimi 官方文档未明示缓存是否跨 API key 隔离（行业惯例为账户级隔离，未证实）。
-- 即使同 key 且缓存账户级共享，可共享的只有**逐字节相同的头部**；三 profile 的
-  身份段、AGENTS.md/SOUL、技能集存在差异，分歧点出现得相当早，共享上限有限。
-- 为对齐提示词而改动三 profile 的内容，会牺牲各 profile 的个性化（语气守则、
-  家庭边界条款），代价确定、收益依赖未核实假设。
+当前应写成两条独立链：
 
-**结论：关闭此开放问题——不追求跨 profile 前缀对齐。** 若未来 Kimi 公布缓存隔离粒度
-或提供 `prompt_cache_key` 语义的官方说明，可重估。
+```text
+A. ordinary mid-session memory write
+   -> persistent memory changes
+   -> current frozen prompt bytes unchanged
+   -> no cache-break claim can be inferred
 
-## 五、待数据积累后才能做的标定（记录备查）
+B. prompt rebuild event
+   -> system prompt / summarized history may change
+   -> provider cache boundary may change
+   -> cache impact must be measured from actual request/usage telemetry
+```
 
-1. **λ2/λ3 与容量预算优化**：巩固 cron（每周一，首跑 2026-08-24）积累 index.json
-   events（hit/create/confirm）后，可计算每条记忆的"单位 token 提取收益"
-   = 激活分 / 条目 token 数，据此在 3,750 字符预算内做条目级优胜劣汰——
-   这是 THM 驱逐策略的经济学升级版。验证点：8-24 后检查 THM 部署的报告目录
-   是否产出首份巩固报告。
-2. ~~**prompt_cache_key**~~ **已落地（2026-08-19）**：源码核实——Hermes 对 Codex/Responses 传输默认
-   派生 prompt_cache_key（内容寻址 + 会话作用域，#78941/#79017）；chat_completions 传输支持
-   但需 provider profile 的 `supports_prompt_cache_key=true`（providers/base.py 默认 False，
-   内置 kimi-coding 插件未开启），而自定义 provider 的 config.yaml 字段里无此开关。
-   **落地路径**：自定义 provider 支持 `extra_body` 字段且随每请求注入
-   （agent_init.py::_custom_provider_extra_body_for_agent 按 base_url 匹配），
-   三 profile 已设置 `providers.kimi.extra_body.prompt_cache_key`
-   = hermes-p1-v1 / hermes-p2-v1 / hermes-p3-v1（示例键名，实际值按 profile 部署）（静态键=把该 profile 全部流量钉到同一
-   缓存桶，消除 Kimi 官方答复中提到的集群路由随机 miss；分 profile 用不同键避免串桶）。
-   生效条件：gateway 重启后（CLI 新会话自动生效）。预期收益：gateway 长会话缓存命中率提升，
-   直接降 p_eff 里的全价占比。验证方法：对比重启前后 state.db 账单里的 cached_tokens 占比。
+典型 B 类事件包括：新 session、compaction 后的 prompt rebuild、明确的 prompt config/toolset/model change，或其他会改变 serialized request prefix 的 runtime 行为。
+
+### 历史 `$0.27 / $0.54 / $1.22` 表怎么处理？
+
+旧版用：
+
+```text
+opportunity_cost ~= H * (p_in - p_cache)
+```
+
+计算 100K / 200K / 450K 历史重新 prefill 的机会成本。
+
+这个算式可以保留为一个**假设整段 dynamic context 从 cached -> uncached 时的 scenario upper-bound**；它不能再标注为“写一次 memory 的成本”。
+
+如果以后取得真实 provider trace，可以做：
+
+```text
+same-session control
+vs
+prompt-rebuild treatment
+```
+
+直接比较 `cache_read_tokens / uncached_input_tokens / total bill / TTFT`。
+
+## 三、Hermes prompt assembly：stable / volatile 是 cache 设计，不等于全局 recency 优势
+
+Hermes 的 system prompt 具有 stable 与 volatile 分层，memory/user 块属于 volatile 部分。这有两个可以安全保留的结论：
+
+1. **cache boundary 价值**：稳定的大块放在前面，使一部分静态 prefix 更容易复用。
+2. **memory 是 prompt 的明确组成部分**：它不是散落在磁盘但从不进入模型的旁路状态。
+
+旧版第三个推论需要撤回：
+
+> “memory 在全提示词尾部，所以自然获得 lost-in-the-middle 的近因优势。”
+
+memory 位于 **system prompt 的 volatile 尾部**，后面仍然可以有很长的 conversation history。它在整个 model input 中未必接近末端，因此不能仅凭 system-prompt 内部位置推出全局 recency advantage。
+
+正确的验证方式是对具体 request serialization 记录 token offset，再跑位置敏感任务 A/B。
+
+## 四、`prompt_cache_key`：routing/caching hint，不是命中保证
+
+Kimi 当前 Chat API 文档说明：
+
+- `prompt_cache_key` 用于缓存相似请求、优化缓存命中；
+- coding agent 通常使用 session id 或 task id；
+- 恢复同一 session 时应保持不变；
+- 对 Kimi Code Plan 为必填，对其他多轮 agent 也建议使用。
+
+来源：https://platform.kimi.com/docs/api/chat
+
+因此：
+
+```text
+profile-static-key
+```
+
+可以作为一个实验策略，但不能描述成：
+
+> “把全部流量钉进同一缓存桶，消除随机 miss”。
+
+它更准确的表述是：
+
+> “给 provider 一个稳定的相似请求 key，期望提高路由/cache locality；真实增益必须由 usage telemetry A/B 验证。”
+
+而且 key 粒度过粗可能把不相关 session 混进同一个 routing bucket，所以优先候选通常应是 session/task identity，而非永久 profile identity。
+
+## 五、Memory 与 THM：把租金、活跃度、正确性和任务价值分开
+
+Context Economics 不应该把 THM 的 activity score 直接当成“价值”。
+
+建议四个量分开：
+
+| 量 | 问题 |
+|---|---|
+| `resident_cost` | 常驻它每轮花多少钱/token |
+| `activity` | 最近是否被读取/使用/确认 |
+| `validity` | 当前时间、版本、对象、环境下是否仍成立 |
+| `task_value` | 缺少它会不会显著降低任务成功或增加重取成本 |
+
+一个极少被复述的禁止事项可能 activity 很低，但 task_value 很高；一条经常出现的旧路径可能 activity 高、validity 已为零。
+
+因此容量优化更合适的目标是：
+
+```text
+expected_net_value(item)
+= expected_task_value
+- resident_cost
+- interference_cost
+- stale/error_risk
+```
+
+其中 task value 最终需要 L5 的受控任务或真实结果 telemetry，而不能只由 hit count 自循环生成。
+
+## 六、认知科学：保留设计类比，收窄推导强度
+
+### Cowan (2001)
+
+Cowan 对短时/工作记忆容量的经典讨论常被概括为约 `4±1` chunks。对本系统最稳妥的启发是：
+
+> 持续占据前景的独立信息单元有限，结构化与组块化可能提高有效利用率。
+
+它不能推出：
+
+- Hermes 应该恰好有几个字符预算；
+- LLM system prompt 的“chunk”与人类 working-memory chunk 等价；
+- 只要把多个事实合并成一条就一定提高模型正确率。
+
+### Peterson & Peterson (1959)
+
+经典短时保持实验表明，在阻断复述的任务条件下，人类对材料的保持会快速下降。它可以支持“近因和复核频率值得研究”的启发，但不能直接给 agent memory 的 decay 参数或驱逐周期。
+
+因此这两项继续作为 `design analogy`，不作为配置参数的实证标定。
+
+## 七、当前可执行的 L4 实验
+
+### 1. prompt rebuild cache A/B
+
+记录同一 provider / model / toolset：
+
+- control：连续普通 turn；
+- treatment A：mid-session memory write，但不重建 session；
+- treatment B：触发实际 prompt rebuild；
+- treatment C：新 session 读取新 memory snapshot。
+
+比较：
+
+```text
+cached_input_tokens
+uncached_input_tokens
+cache_write_tokens (if billed)
+bill
+TTFT
+```
+
+### 2. memory position A/B
+
+同一事实分别放在：
+
+- stable/volatile system section；
+- recent conversation tail；
+- retrieved on demand；
+
+控制 token budget，测事实 QA 与任务成功，而不是只测“模型有没有复述”。
+
+### 3. profile key A/B
+
+比较：
+
+- no prompt_cache_key；
+- session/task key；
+- profile-static key；
+
+按 session 长度分桶，观察 cache hit、p95 TTFT、错误率和账单。未测之前不宣布哪个 key 粒度最优。
+
+## 八、与 L5 的接口
+
+L4 负责“长期状态该不该常驻/如何进入上下文”，L5 负责把实际后果计价：
+
+```text
+memory omission
+ -> tool/file/database reacquisition
+ -> extra turns
+ -> extra token/tool/latency cost
+
+stale memory
+ -> wrong action / retry / correction
+ -> failure cost
+```
+
+所以最终 T0 决策不应只优化 resident token 数，而应优化 **success-adjusted task cost**。
+
+参见：`L5-task-economics.md`。
 
 ---
 
-来源声明：Kimi 缓存机制引自 platform.kimi.com 官方文档与 forum.moonshot.ai 官方答复
-（2026-08-19 检索）；注入位置引自本机 hermes-agent 源码行号；租金/断点数字为
-本地实测字符量 × 校准换算 × 官方定价的推算，非厂商账单实测。
+## 来源与版本说明
+
+- Hermes memory frozen snapshot：当前上游文档 `website/docs/user-guide/which-file-does-what.md` 与 memory/system-prompt 实现；本轮 code search 观察到的上游代码快照记录于 `PROVENANCE.md`。
+- Kimi `prompt_cache_key`：https://platform.kimi.com/docs/api/chat
+- Cowan, N. (2001), *The magical number 4 in short-term memory: A reconsideration of mental storage capacity*.
+- Peterson, L. R. & Peterson, M. J. (1959), *Short-term retention of individual verbal items*.
+- 本机 2026-08-19 profile 字符量是历史 `runtime-measured` 数据；私人原始 memory/state.db 未进入公开仓库。

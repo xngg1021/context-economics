@@ -1,180 +1,314 @@
-# 大模型上下文经济学（Context Economics）体系
+# 大模型上下文经济学（Context Economics）
 
-> 研究：2026-08-19，SJF × Hermes。
->
-> 时效声明：调研数据截至 2026-08-19，配置决策更新至 2026-08-28。定价与缓存机制属快衰减信息，
-> 使用前请以官方最新页面为准；本文研究结论（平方定律、替代定律等）不随价格波动失效。方法：四路并行子代理全网调研（全部来源标注、未核实项如实声明）
-> + 本地定量建模（model.py 可复现）。四层底稿：L0-pricing.md / L1-systems.md / L2-compression.md / L3-harness.md。
+> 起始研究：2026-08-19，SJF × Hermes  
+> correctness hardening：2026-09-07  
+> 当前研究对象：LLM / agent 在输入、缓存、压缩、工具、记忆、重取、重试、延迟与任务成功之间的成本—质量权衡。
 
-## 〇、核心命题
+本仓库把上下文视为一种会被反复携带、缓存、压缩、重取和重新计算的运行资产。目标不是单纯“省 token”，而是把 **provider 定价 → serving/KV → 压缩算法 → harness 调度 → 持久记忆 → 任务经济学** 放进同一个可验证框架。
 
-**上下文是一种"每轮重复计费的资产"。** agent 会话第 k 轮的成本：
+## 0. 证据纪律
 
-```
-cost_k = C_k · p_eff + o_k · p_out,  其中 p_eff = (1-ρ)·p_in + ρ·p_cache
-```
+从 2026-09-07 起，仓库统一区分以下证据等级：
 
-C_k 随轮数线性增长，所以**不干预的会话总成本随 N 呈平方增长**（ΣC_k ≈ N·S + d·N²/2）。
-经济学要回答的就是：用什么手段、在什么时候、以多大力度削减 C_k 的携带量。
+| 标签 | 含义 |
+|---|---|
+| `runtime-measured` | 真实 runtime / provider bill / trace 直接观测；必须记录时间、版本、口径 |
+| `source-code` | 从指定软件 revision 的源码确认的行为 |
+| `provider-doc` | 厂商官方定价/API/机制说明；属于快衰减信息 |
+| `paper-result` | 论文在其特定实验条件下报告的结果 |
+| `model-proxy` | 本仓库模型假设推导出的代理指标；不能冒充真实正确率、召回率或生产效果 |
 
-四类手段构成统一光谱：**缓存（原样复用）→ 截断/清除（无损丢弃可重取部分）→ 压缩（有损摘要）→ 重开会话（全弃）**。
-本体系的全部结论都可从这一个成本方程推出。
+`PROVENANCE.md` 固定本轮版本身份和来源边界；`pricing-snapshot.json` 保存机器可读的定价快照。L0–L3 的 2026-08-19 文档作为历史研究快照保留，9 月 7 日的新材料和勘误汇总在 `RESEARCH-ADDENDUM-2026-09-07.md`。
 
-## 一、四层结构
+## 1. 六层结构
 
-```
-L0 定价层   厂商如何把上下文变成商品：输入/输出/缓存读/缓存写 四类价格 + TTL + 最小前缀
-L1 系统层   KV cache 复用技术：缓存为什么能便宜——省的是 prefill FLOPs，费的是存储与带宽
-L2 算法层   上下文压缩技术：用可控的信息损失换 token 削减，压缩率是连续旋钮
-L3 策略层   harness 调度：前缀稳定、批量调用、子代理隔离、会话边界
-```
+```text
+L0 Pricing
+   uncached input / cached input / cache write / storage / output /
+   long-context tier / batch / priority / time-of-day
 
-### L0 定价层要点（8 家厂商官方核实，详见 L0-pricing.md）
+L1 Serving & KV
+   prefill、KV cache、prefix/non-prefix reuse、HBM/DRAM/SSD、schema/resource reuse
 
-缓存定价已收敛为**两族**：
+L2 Compression
+   文本删减、摘要、soft token、外部化、RAG、内容类型化保真
 
-| 族 | 代表 | 结构 | 策略含义 |
-|---|---|---|---|
-| 显式写入收费族 | Anthropic、OpenAI(GPT-5.6+)、阿里显式 | 写 1.25×、读 0.1×、TTL 5-30min 命中续期 | 前缀要"稳定且密集复用"才摊薄写入溢价；空闲超时即作废 |
-| 自动免费写族 | Kimi(新)、DeepSeek、xAI、Gemini 隐式、阿里隐式 | 写入免费、读 0.02-0.25×、系统管理 TTL | 前缀稳定是纯收益，无写入惩罚；TTL 不可控靠使用频率保温 |
+L3 Harness
+   prompt assembly、tool schema、subagent、compaction、cache-stable scheduling、
+   prompt rebuild / reacquisition
 
-极端值：DeepSeek 磁盘缓存命中 ≈ -98%（存储便宜到接近免费）；Kimi 缓存读 $0.3/M 是 DeepSeek 的约 50 倍——
-**"缓存命中≠免费"在我们 kimi 主模型上尤其成立**，高命中率下有效输入价下限 $0.3/M 就是前缀稳定策略的价值上限。
+L4 Memory & Profile
+   frozen memory snapshot、长期驻留租金、版本/来源、profile 隔离、持久状态
 
-### L1 系统层要点（论文编号全部核实，详见 L1-systems.md）
-
-- KV 字节数公式：每 token KV = 2 × layers × kv_heads × head_dim × dtype 字节（LLaMA-7B FP16 = 512KB/token）。
-  缓存一段 10 万 token 前缀 ≈ 51GB 等价物——所以缓存定价本质是**存储租金换算力**，TTL 就是租期。
-- 复用技术演进链：PagedAttention（vLLM, arXiv:2309.06180，内存分页，吞吐 2-4×）→ RadixAttention
-  （SGLang, arXiv:2312.07104，基数树前缀共享，吞吐 6.4×）→ Prompt Cache（arXiv:2311.04934，模块化复用，
-  TTFT GPU 8×）→ CacheBlend（arXiv:2405.16444，**非前缀** KV 复用，只重算 5-18% token，TTFT 2.2-3.3×）。
-- 分层卸载：Mooncake（arXiv:2407.00079，P/D 分离 + DRAM/SSD 池，吞吐 +50-525%）、LMCache（arXiv:2510.09665）、
-  FlexGen（arXiv:2303.06865）。DeepSeek 的 -98% 定价正是这一层工程成熟度的货币化。
-- 前沿信号：arXiv:2606.13361《Can I Buy Your KV Cache?》已开始讨论 KV 作为可交易资产（未独立复核）。
-
-### L2 算法层要点（详见 L2-compression.md）
-
-压缩率-性能前沿（可调节旋钮，非开关）：
-- 软压缩（删 token）：LLMLingua（2310.05736）20× 压缩性能损失 <2 点；LongLLMLingua（2310.06839）
-  4× 压缩长文档 QA 反升 17.1%（去噪效应）；LLMLingua-2（2403.12968）压缩开销可忽略。
-- 硬压缩（软 token）：Gist tokens（2304.08467）26×；ICAE（2307.06945）4×、与主模型解耦；
-  Activation Beacon（2401.03462）推荐 8×、压缩率连续可调；COCOM（2407.09252）4-128× 可配置。
-- 经济性对照：Self-Route（2407.16833）——长上下文优于 RAG，但查询级路由混合省 39-65% 且性能持平。
-- 质量风险实证：LongMemEval（2410.10813）商用助手在 115K+ 上下文掉约 30%；ACE（2510.04618）
-  揭示 context collapse——迭代改写上下文可致失效。**这是成本模型里"信息损失"项的实证锚点。**
-
-### L3 策略层要点（详见 L3-harness.md）
-
-- Manus 一手数据：agent 会话输入:输出 ≈ **100:1**，KV 命中率是首要优化指标——证实成本由输入重发主导，
-  输出价（kimi $15/M）反而不是主战场。
-- Claude Code 逆向：三层压缩（微压缩→自动压缩→手动 /compact）；社区观察其自动压缩阈值持续下调。
-- Cline 的触发公式 max(窗口-40K, 窗口×0.8)：业界参照锚点 = 窗口 80% + 40K 绝对缓冲。
-- arXiv 2601.06007（500+ 会话实测）：稳定前缀 + 动态内容置尾，成本降 41-80%、TTFT 降 13-31%。
-- Firecrawl 实测：每个 MCP server 的 schema 吃 1-2 万 token 固定前缀；.claudeignore 一类排除手段降 85.5%。
-
-## 二、定量模型（model.py，python 直接可跑）
-
-### 压缩盈亏平衡（解析解）
-
-把中间区 M 压成 r·M：一次性成本 p_in·M + p_out·r·M，之后每轮省 (1-r)·p_eff·M。
-回本轮数与 M 无关：
-
-```
-N* = (p_in + r·p_out) / ((1-r)·p_eff)
+L5 Task Economics & Observability
+   billed cost + tool/reacquisition/retry/latency/failure + task success
 ```
 
-kimi-k3 实测定价代入（r=0.2）：无缓存 2.5 轮回本；ρ=0.85 时 10.6 轮；ρ=0.95 时 17.2 轮。
+## 2. 核心成本模型
 
-**核心反直觉结论：缓存与压缩是替代品。** 缓存命中越高，携带原文越便宜，压缩回本越慢。
-DeepSeek 这种 -98% 缓存价下压缩几乎只剩质量维度的意义；kimi 缓存贵（$0.3），压缩保留价值。
+在最简单的固定价、固定 cache-hit share `rho` 条件下，第 `k` 轮：
 
-### 会话模拟（120 轮、每轮净增 5100 tok、1M 窗口、kimi 定价）
+```text
+cost_k = C_k * p_eff + o_k * p_out
+p_eff  = (1-rho) * p_in + rho * p_cache
+```
 
-| 配置 | 无缓存 | ρ=0.85 |
-|---|---|---|
-| 不压缩 | $115.8 | $28.3 |
-| 当前 θ=0.5 | $93.2（省 20%） | $25.0（省 12%） |
-| θ=0.15（本负载最优） | $39.1（省 66%） | $13.1（省 54%） |
-| θ≥0.75 | 120 轮内永不触发 | 同左 |
+若每轮新增历史近似为常数 `d`，且请求每轮重发全部历史：
 
-注意：模型未计入压缩的信息损失成本（L2 的质量实证表明此项非零），纯成本视角会高估压缩收益；
-θ 的实际选择 = 成本最优解叠加质量约束。
+```text
+C_k ~= S + k*d
+sum(C_k) = N*S + d*N*(N+1)/2
+```
 
-## 二.五、真实数据重放（real_model.py，2026-08-19 实装依据）
+因此，**在这些条件成立时**，累计输入携带量含 `O(N^2)` 项。固定窗口截断、RAG、分页、非线性长上下文定价、失败重试和模型路由都会改变曲线，所以本仓库不再把它写成无条件“平方定律”。
 
-用三个 profile 的 state.db 真实消息流（33 个会话、消息数≥8）重放不同 θ 策略，
-字符/token 比由无压缩会话账单自动校准（2.13）。维度：成本、召回率（压缩衰减 ×
-长上下文退化双因子）、持续性（原文驻留轮数）、UX 记忆感知（回指旧内容时的遗忘事件）。
+### 缓存与压缩的局部替代关系
 
-| θ | 相对不压缩 | 相对旧配置 0.5 | 压缩次数 | 终态召回 | 全程记忆完整度 |
-|---|---|---|---|---|---|
-| 不压缩 | — | +56% 更贵 | 0 | 0.977 | 0.991 |
-| 0.08 | 省 67.8% | 省 49.6% | 100 | 0.997 | 0.997 |
-| **0.12（8-19 至 8-28 实装）** | **省 64.2%** | **省 44.0%** | 56 | 0.998 | 0.999 |
-| 0.15 | 省 61.7% | 省 40.1% | 39 | 0.998 | 0.999 |
-| 0.30 | 省 49.8% | 省 21.5% | 10 | 0.990 | 0.996 |
-| 0.50（8-19 前与 8-28 起） | 省 36.1% | — | 4 | 0.986 | 0.994 |
+把中间区 `M` 压成 `r*M`，在固定价格和固定命中率近似下：
 
-要点：
-- 成本含压缩的缓存断点惩罚（摘要插入断前缀，下一次调用仅稳定头命中，re-prefill 全价一次）。
-- 0.08 与 0.12 成本接近，但 0.12 压缩次数少 44%——滚动摘要次数越少，ACE（2510.04618）
-  揭示的 context collapse 风险越低，故选 0.12 而非 0.08。
-- 质量模型分辨率警告：在 q（压缩保留率 user 0.95/assistant 0.85/tool 0.70）参数下，
-  各档召回率差异 <2 个点，UX 遗忘事件全档为 0——模型无法区分 θ 的质量差异，
-  真实质量约束来自 L2 的实证锚点（115K 退化线、context collapse），故 θ=0.12 压在质量线上。
-- 反直觉确认：不压缩的"终态召回 0.977"反而低于压缩后的 0.998——长上下文退化
-  （lost-in-the-middle）在真实会话峰值（30-45 万）已经开始咬人，压缩 shortens context 反而提质。
+```text
+N* = (p_in + r*p_out) / ((1-r)*p_eff)
+```
 
-实装：2026-08-19 三 profile compression.threshold 0.5→0.12（备份 .bak-20260819），
-target_ratio 保持 0.2。
+在这个局部账单模型里 cache 越便宜，携带原文的边际价格越低，压缩回本越慢。进入 L5 后，压缩造成的状态丢失、reacquisition、工具失败和重试会改变关系，因此缓存与压缩在任务层可能互补，也可能出现非单调最优点。
 
-2026-08-28 更新：用户决策恢复官方默认 θ=0.5（少压缩、保上下文完整性优先），三 profile 统一改回，
-备份恢复前配置。成本模型结论不变——θ 越低越省钱，0.12 重放预估省 44% 依然成立；恢复 0.5 是
-质量与体验优先的取舍，压缩频率与上下文完整性排在成本之前。
+## 3. `model.py`：确定性成本模型
 
-## 三、跨层推论（体系的"定律"）
+运行：
 
-1. **平方定律**：无干预会话成本随轮数平方增长，根源是历史每轮重发。一切手段都在削这个平方项。
-2. **替代定律**：缓存与压缩互为替代，替代弹性由 p_cache/p_in 比值决定。缓存越便宜，压缩越只剩质量动机。
-3. **两族定价**：写入收费族要求"前缀稳定 + 密集复用 + TTL 保温"三件套；免费写族只要求前缀稳定。
-4. **压缩率是旋钮**：L2 前沿证明 4-20× 压缩性能损失可控，甚至更优（去噪）；r 应该按内容类型分级，不是全局一个值。
-5. **阈值三参照**：业界锚点 Cline 0.8×窗口/-40K 缓冲；成本最优（本负载）0.15-0.25；质量约束（LongMemEval）
-   显示 115K+ 即开始掉性能——**质量天花板远低于 kimi 的 1M 窗口，θ 该按质量线而非窗口线设定**。
-6. **上下文分层即存储分层**：MemGPT 的 OS 类比在经济学上严格成立——HBM/DRAM/SSD/归档对应
-   驻留上下文/缓存/压缩摘要/外部文件，每层有自己的租金与存取价。
+```bash
+python model.py
+```
 
-## 四、对本机配置的直接推论
+当前代码完成了三项关键修正：
 
-现状：kimi-k3（$3/$0.3/$15），θ=0.5，target_ratio=0.2，辅助任务已走 gemini-3.7-flash。
+1. Hermes `target_ratio` 只用于 recent-tail budget：
 
-1. **我们属"自动免费写族"**：前缀稳定是纯收益，无写入溢价、无 TTL 焦虑（系统管理）。现有"会话中途不换模型/
-   工具集"守则在经济上是最优的，无需改变。
-2. ~~θ=0.5 终身不触发~~ **已实装修正（2026-08-19）**：历史倒查证实全部 33 个真实会话峰值 ≤45 万，
-   θ=0.5（50 万触发）从未工作过。三 profile 已下调至 0.12（12 万触发，压 LongMemEval 质量线），
-   真实数据重放预估相对旧配置省 44%。见"二.五"。2026-08-28 三 profile 恢复 θ=0.5
-   （少压缩保完整性的最终取舍），本推论的数值结论保留为成本侧证据。
-3. **摘要模型不宜再降档**：压缩调用输入大输出小（r=0.2），正是缓存友好型负载；留在 kimi 主模型合理。
-4. **工具前缀值得审计**：按 Firecrawl 实测，每个 MCP server 1-2 万 token；我们的固定前缀 ~14K 健康，
-   但每加一个工具集都在给每轮调用加固定租金。
-5. **DeepSeek 的定价证明磁盘缓存路线可走通**：若未来 kimi 缓存降价空间有限，重负载长会话可评估
-   把"工具输出消化型"子任务路由到 DeepSeek 的经济性（-98% 命中价对平方项是釜底抽薪）。
+   ```text
+   tail_budget = target_ratio * threshold * context_window
+   ```
 
-## 五、开放问题
+   不再同时冒充“摘要大小比例”。摘要大小由独立参数 `summary_ratio_of_middle` 建模。
 
-1. 压缩信息损失的定价：需要把 LongMemEval 式质量曲线折算成"每轮错误成本"，与 token 节省比较。
-2. r 的内容分级：工具输出（高冗余可重取，可狠压）vs 用户意图（必须全保真）应不同保留率。
-3. ~~多 profile 家庭场景的共享前缀~~ **已结题（2026-08-19，L4 第四节）**：不追求跨 profile 前缀对齐——
-   可共享上限仅为逐字节相同的头部，个性化分歧点出现早，且 kimi 缓存隔离粒度未官方明示，代价确定收益存疑。
-4. KV cache 交易（arXiv:2606.13361）若成真，上下文资产管理会变成独立市场。
+2. 有限 grid 的最小端点不再叫全局 `theta*`。输出只声明：
 
-## 六、记忆与档案的经济学（L4-memory-profile.md，2026-08-19）
+   ```text
+   lowest-cost point in THIS GRID
+   ```
 
-THM 目标函数 λ 标定模块。要点：T0 热层驻留租金很小（主 profile 2,322 tok/轮，命中下 $0.0007/轮），
-装满不是经济问题；**真正的成本事件是写入**——中途写记忆断缓存前缀，全对话历史全价 re-prefill 一次
-（20 万 token 会话 ≈ $0.54），故守则=批量写、早写或末写、长会话中途不零散写。
-注入位置经源码实证已最优（system_prompt.py stable/volatile 分层，记忆在近因区且静态头不受影响）。
+   因为不计质量/重取/失败成本时，纯 token 模型经常持续偏好更激进压缩。
 
----
-数据来源声明：L0-L3 四个底稿文件每条结论均附来源 URL/arXiv 编号；子代理标注的未核实项
-（xAI TTL、豆包最小前缀、阿里显式最小 token、Kimi 新版命中价官方页、AutoCompressor 倍率表等）
-未纳入本文件的定量结论。
+3. `Pricing` 支持非线性长上下文档位。例如 2026-09-07 的 OpenAI GPT-5.6 Sol 官方页对 >272K input 的请求采用不同倍率，因此真实 provider cost 不能永久抽象成一个常数 `p_in`。
+
+历史 Kimi `$3 / $0.3 / $15` 继续作为 2026-08-19 study snapshot 用于复现，不自动代表 live quote。
+
+## 4. `real_model.py`：真实 trace + 明示代理质量模型
+
+公开可复现：
+
+```bash
+python real_model.py --fixture fixtures/sample_sessions.json
+```
+
+对本机 Hermes SQLite 做只读重放：
+
+```bash
+python real_model.py \
+  --db default=/path/to/state.db \
+  --db other=/path/to/other/state.db
+```
+
+脚本不再硬编码私人 Windows 路径。
+
+真实部分可以包括 message 顺序/长度、模型标签、aggregate input/cache token；以下仍是模型假设：字符/token 校准、摘要保留率、长上下文退化函数、回指概率和 failure line。因此输出统一命名为：
+
+```text
+proxy_final_recall
+proxy_integrity
+proxy_persistence_turns
+proxy_ux_failures
+```
+
+旧版 README 中“0.998 终态召回”“30–45 万上下文已经被压缩反向提质”等说法，现统一降级为给定假设下的 sensitivity result。只有真实 task/runtime A/B 才能升级为 `runtime-measured`。
+
+## 5. `task_economics.py`：把 L5 变成可运行代码
+
+合成 receipt 示例：
+
+```bash
+python task_economics.py \
+  --receipts fixtures/run_receipts.json \
+  --control no-compression \
+  --treatment aggressive-compression
+```
+
+它按 policy 聚合：
+
+```text
+success_rate
+total / mean observed cost
+provider bill
+cost_per_success
+tool calls
+retrieval calls
+reacquisition calls
+retry count
+compression calls
+wall time
+```
+
+并对具有唯一 control/treatment 配对的 task 输出逐任务 delta。缺失或重复 arm 会被跳过，不偷偷平均成看似干净的结论。
+
+`observed_cost_usd` 当前可显式组合：
+
+```text
+provider_bill
++ tool_cost
++ reacquisition_cost
++ retry_cost
++ latency_cost
++ failure_cost
+```
+
+它不负责替实验设计推断因果；真正的结论仍需要 pinned model/provider/harness 和配对任务。
+
+## 6. Hermes 行为勘误
+
+2026-09-07 核查的 Hermes 上游文档/源码表明：`MEMORY.md` / `USER.md` 在 session start 形成 **frozen system-prompt snapshot**；中途 memory write 会立即持久化，但不会改写当前会话已冻结的 system prompt。
+
+因此旧 L4 的：
+
+```text
+mid-session memory write
+ -> current prompt prefix changes
+ -> next request full dynamic history re-prefill
+```
+
+已撤回。
+
+当前模型是：
+
+```text
+ordinary mid-session memory write
+ -> disk state changes
+ -> current frozen prompt unchanged
+ -> current-session cache break: not implied
+
+prompt rebuild / compaction / new session / toolset/model/prompt mutation
+ -> serialized prompt may change
+ -> cache impact must be observed from actual telemetry
+```
+
+历史 `$0.27 / $0.54 / $1.22` 可以保留为“若 100K/200K/450K dynamic context 从 cached 变为 uncached”的 scenario upper bound，不能再称为写一次 memory 的既定成本。详见 `L4-memory-profile.md`。
+
+Kimi 的 `prompt_cache_key` 也从“消除随机 miss”修正为 provider 的 routing/caching hint；session/task key 是当前官方文档更自然的 coding-agent 粒度，profile-static key 只作为待测实验。
+
+## 7. 2026-09-07 研究增补
+
+不改写 L0–L3 的历史快照，新增材料集中记录在 `RESEARCH-ADDENDUM-2026-09-07.md`：
+
+- **L0**：OpenAI 长上下文非线性价格；Anthropic 0.025x cache-read 例外；Kimi `prompt_cache_key` 语义。
+- **L1**：ReCache（arXiv:2608.19662）与 resource/schema-level KV reuse；标准 KV 大小公式的 MLA/量化/local attention 等适用边界。
+- **L2**：The Sleeping Agent（arXiv:2608.11775）说明压缩损失具有类型结构，尤其 temporal information 不能被一个总 recall 数字覆盖。
+- **L3/L5**：Token Reduction Is Not Cost Reduction（2607.12161）、What Does Context Compression Cost an Agent?（2608.16370）、Control Under Compression（2608.01056）共同说明 token reduction、provider bill、reacquisition、runtime reliability 和 task success 必须分账。
+
+## 8. L5：真正的目标函数
+
+```text
+J(policy) =
+    E[task_value]
+  - E[token_bill
+      + cache_write/storage
+      + tool_cost
+      + reacquisition_cost
+      + retry_cost
+      + latency_cost
+      + failure_cost]
+```
+
+如果 task value 暂时无法货币化，至少并列报告：
+
+```text
+success_rate
+cost_per_success
+provider_bill
+p50/p95 latency
+tool/retrieval/reacquisition calls
+retry/compression counts
+cache-hit share
+```
+
+真正有意义的 `theta*` 应该在这一层产生。
+
+## 9. 可复现性与 CI
+
+仓库核心验证只依赖 Python 标准库：
+
+```bash
+python -m unittest discover -s tests -v
+python model.py
+python real_model.py --fixture fixtures/sample_sessions.json
+python task_economics.py \
+  --receipts fixtures/run_receipts.json \
+  --control no-compression \
+  --treatment aggressive-compression
+```
+
+GitHub Actions 在 Python 3.11 / 3.13 上执行同一套单测与 smoke tests。
+
+公开 fixture 全部是 synthetic；仓库不包含私人 `state.db`、原始 conversation、MEMORY/USER 原文、API key 或账户身份。
+
+## 10. 仓库结构
+
+```text
+README.md
+CHANGELOG.md
+PROVENANCE.md
+pricing-snapshot.json
+RESEARCH-ADDENDUM-2026-09-07.md
+
+L0-pricing.md
+L1-systems.md
+L2-compression.md
+L3-harness.md
+L4-memory-profile.md
+L5-task-economics.md
+
+model.py
+real_model.py
+task_economics.py
+
+fixtures/sample_sessions.json
+fixtures/run_receipts.json
+
+tests/test_model.py
+tests/test_real_model.py
+tests/test_task_economics.py
+tests/test_docs.py
+
+.github/workflows/validate.yml
+```
+
+## 11. 当前仍未解决的问题
+
+1. 为当前 Hermes compressor 做 **exact-version replay**：固定 summary budget、tail mode、protected messages、prompt rebuild 与 provider transport。
+2. 保存 per-request billing trace，而不是只使用 session aggregate。
+3. 用真实任务 A/B 校准 quality loss，替换 `real_model.py` 中的 proxy retention curve。
+4. 将 tool/reacquisition/retry/latency 自动写入统一 run receipt，而不是只接受离线 JSON。
+5. 研究按内容类型的 retention policy：路径、数字、时间、否定约束、用户意图、tool protocol、可重取 tool output 应区别处理。
+6. 对 L0 pricing snapshot 做定期刷新；快衰减信息不能永久写死在“定律”里。
+7. 在不同 provider/cache tier 上做 `cache × compression` factorial A/B，检验任务层是替代还是互补。
+
+## 12. 主要新增来源（2026-09-07 hardening）
+
+- OpenAI GPT-5.6 Sol: https://developers.openai.com/api/docs/models/gpt-5.6-sol
+- Anthropic pricing: https://platform.claude.com/docs/en/about-claude/pricing
+- Kimi Chat API: https://platform.kimi.com/docs/api/chat
+- LongMemEval: https://arxiv.org/abs/2410.10813
+- ReCache: https://arxiv.org/abs/2608.19662
+- Token Reduction Is Not Cost Reduction: https://arxiv.org/abs/2607.12161
+- What Does Context Compression Cost an Agent?: https://arxiv.org/abs/2608.16370
+- Control Under Compression: https://arxiv.org/abs/2608.01056
+- The Sleeping Agent: https://arxiv.org/abs/2608.11775
+
+更早文献继续保留在 L0–L3 原始底稿中；来源与版本边界见 `PROVENANCE.md`。
