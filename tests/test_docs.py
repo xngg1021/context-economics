@@ -18,14 +18,29 @@ class DocumentationContractTests(unittest.TestCase):
         self.assertIn("frozen", l4.lower())
         self.assertNotIn("中途写记忆断缓存前缀", readme)
 
-    def test_task_economics_layer_exists(self):
+    def test_task_economics_layer_exists_and_is_executable(self):
+        readme = (ROOT / "README.md").read_text(encoding="utf-8")
         l5 = (ROOT / "L5-task-economics.md").read_text(encoding="utf-8")
         self.assertIn("cost_per_success", l5)
         self.assertIn("reacquisition", l5)
+        self.assertIn("task_economics.py", readme)
+        self.assertTrue((ROOT / "task_economics.py").is_file())
+        self.assertTrue((ROOT / "fixtures" / "run_receipts.json").is_file())
+
+    def test_research_addendum_is_linked(self):
+        readme = (ROOT / "README.md").read_text(encoding="utf-8")
+        path = ROOT / "RESEARCH-ADDENDUM-2026-09-07.md"
+        self.assertTrue(path.is_file())
+        self.assertIn(path.name, readme)
+        text = path.read_text(encoding="utf-8")
+        self.assertIn("ReCache", text)
+        self.assertIn("Token Reduction Is Not Cost Reduction", text)
 
     def test_public_replay_fixture_is_synthetic(self):
         fixture = (ROOT / "fixtures" / "sample_sessions.json").read_text(encoding="utf-8")
+        receipts = (ROOT / "fixtures" / "run_receipts.json").read_text(encoding="utf-8")
         self.assertIn("Synthetic, non-private fixture", fixture)
+        self.assertIn("Synthetic run receipts", receipts)
 
 
 if __name__ == "__main__":
