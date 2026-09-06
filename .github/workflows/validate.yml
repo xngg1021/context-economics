@@ -25,3 +25,9 @@ jobs:
         run: python model.py
       - name: Portable replay smoke test
         run: python real_model.py --fixture fixtures/sample_sessions.json
+      - name: Task economics smoke test
+        run: >-
+          python task_economics.py
+          --receipts fixtures/run_receipts.json
+          --control no-compression
+          --treatment aggressive-compression
