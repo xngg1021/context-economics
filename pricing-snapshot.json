@@ -1,0 +1,67 @@
+{
+  "schema_version": 1,
+  "observed_at": "2026-09-07",
+  "currency": "USD",
+  "unit": "per_1m_tokens_unless_noted",
+  "entries": [
+    {
+      "provider": "OpenAI",
+      "model": "gpt-5.6-sol",
+      "evidence": "provider-doc",
+      "input": 4.0,
+      "cached_input": 0.4,
+      "output": 20.0,
+      "cache_write_multiplier": 1.25,
+      "long_context": {
+        "input_tokens_gt": 272000,
+        "input_multiplier": 2.0,
+        "output_multiplier": 1.5,
+        "applies_to_full_request": true
+      },
+      "source": "https://developers.openai.com/api/docs/models/gpt-5.6-sol"
+    },
+    {
+      "provider": "Anthropic",
+      "model": "claude-fable-5-1",
+      "evidence": "provider-doc",
+      "input": 10.0,
+      "cache_write_5m": 12.5,
+      "cache_write_1h": 20.0,
+      "cached_input": 0.25,
+      "output": 50.0,
+      "cache_read_multiplier": 0.025,
+      "source": "https://platform.claude.com/docs/en/about-claude/pricing"
+    },
+    {
+      "provider": "Anthropic",
+      "model": "claude-sonnet-5",
+      "evidence": "provider-doc",
+      "input": 2.0,
+      "cache_write_5m": 2.5,
+      "cache_write_1h": 4.0,
+      "cached_input": 0.2,
+      "output": 10.0,
+      "cache_read_multiplier": 0.1,
+      "source": "https://platform.claude.com/docs/en/about-claude/pricing"
+    },
+    {
+      "provider": "Moonshot/Kimi",
+      "model": "kimi-k3-study-snapshot",
+      "evidence": "historical-study-snapshot",
+      "observed_at": "2026-08-19",
+      "input": 3.0,
+      "cached_input": 0.3,
+      "output": 15.0,
+      "note": "Pinned historical inputs for reproducing the original local study; re-check live pricing before current decisions."
+    }
+  ],
+  "api_semantics": [
+    {
+      "provider": "Moonshot/Kimi",
+      "field": "prompt_cache_key",
+      "evidence": "provider-doc",
+      "summary": "Used to optimize cache hit rate for similar requests; coding agents usually use session id or task id and keep it stable when resuming.",
+      "source": "https://platform.kimi.com/docs/api/chat"
+    }
+  ]
+}

@@ -1,0 +1,113 @@
+# Provenance and reproducibility
+
+Last hardening review: **2026-09-07**
+
+## Repository identity
+
+Hardening base:
+
+- repository: `xngg1021/context-economics`
+- base branch: `main`
+- base commit: `53d1e9c84025a76a0e6169ca49afdcf68926fc4a`
+- hardening branch: `chat/context-economics-hardening-20260907`
+
+The hardening is forward-only: no rebase, reset or force-push is required.
+
+## Evidence classes
+
+| Class | Meaning |
+|---|---|
+| `runtime-measured` | directly observed in a real runtime/bill/trace |
+| `source-code` | confirmed from a named source-code revision |
+| `provider-doc` | official provider documentation, pricing or API contract |
+| `paper-result` | result reported by a publication under its experiment |
+| `model-proxy` | derived from this repository's assumptions/simulation |
+
+A claim may use multiple classes. `model-proxy` must never be renamed to `runtime-measured`.
+
+## Hermes source boundary
+
+The 2026-09-07 hardening used current upstream Hermes documentation/code surfaced at code-search revision:
+
+`2d7799275046ef5cd48f4a11dbff9c49cddee9ee`
+
+Relevant observed upstream paths included:
+
+- `website/docs/user-guide/which-file-does-what.md`
+- `website/docs/user-guide/features/memory.md`
+- `website/docs/developer-guide/context-compression-and-caching.md`
+- `website/docs/developer-guide/prompt-assembly.md`
+- `agent/system_prompt.py`
+- `agent/context_compressor.py`
+- `agent/conversation_compression.py`
+- `tools/memory_tool.py`
+
+Important: this records the source snapshot used for this review. It does **not** claim every historical local Hermes run used that same revision.
+
+## Historical local measurements
+
+The original 2026-08-19 study used private local Hermes profile/session data.
+
+Public repository contents intentionally exclude:
+
+- private `state.db` files;
+- raw conversation messages;
+- private `MEMORY.md` / `USER.md`;
+- API keys;
+- account identifiers.
+
+Published historical measurements (for example profile memory character counts and aggregate session counts) are retained as anonymized derived observations.
+
+`fixtures/sample_sessions.json` is synthetic and is the only fixture used by public CI.
+
+## Price data
+
+Provider pricing and cache semantics are fast-decaying external data.
+
+Rules:
+
+1. every machine-readable snapshot must include `observed_at`;
+2. live product decisions must re-check provider official docs;
+3. historical simulations may pin an old snapshot for reproducibility;
+4. pricing changes do not retroactively rewrite old experiment results;
+5. statements such as "all models use 0.1x cache read" are forbidden when provider-specific exceptions exist.
+
+See `pricing-snapshot.json`.
+
+## Papers added in 2026-09-07 hardening
+
+- arXiv:2607.12161 — Token Reduction Is Not Cost Reduction
+- arXiv:2608.16370 — What Does Context Compression Cost an Agent?
+- arXiv:2608.01056 — Control Under Compression
+- arXiv:2608.11775 — The Sleeping Agent
+- arXiv:2608.19662 — ReCache
+
+These are used for the claims explicitly described in `README.md` and `L5-task-economics.md`; their reported numbers remain scoped to their own experimental settings.
+
+## Reproduction
+
+Public/portable:
+
+```bash
+python -m unittest discover -s tests -v
+python model.py
+python real_model.py --fixture fixtures/sample_sessions.json
+```
+
+Private trace replay:
+
+```bash
+python real_model.py --db profile=/path/to/state.db
+```
+
+The latter is a trace replay. Unless the task outcome itself is re-executed, it is not a runtime A/B.
+
+## Change discipline
+
+When modifying formulas or model semantics:
+
+- update unit tests first or in the same commit;
+- update README numeric claims in the same commit;
+- do not silently repurpose a parameter name from upstream software;
+- keep provider prices out of timeless "laws";
+- add exact version/provenance when a claim depends on implementation details.
