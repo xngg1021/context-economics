@@ -103,6 +103,8 @@ def run(path, output):
         raise ValueError('task/policy digest mismatch')
     if pr.digest(bundle['pricing_snapshot'])!=pins['pricing_digest']:
         raise ValueError('pricing digest mismatch')
+    if pins['scorer'] != 'public-exact-match:v1' or pins['scorer_source_digest'] != pr.digest(Path('provider_runtime.py').read_text()):
+        raise ValueError('scorer implementation digest mismatch')
     from pricing_refresh import check
     if check(bundle['pricing_snapshot'])['stale']:raise ValueError('pricing snapshot stale')
     provider=pins['provider']
@@ -125,7 +127,20 @@ def run(path, output):
     __import__('experiment_analysis').GateConfig(**pins['gate_config'])
     if Path(output, bundle['experiment_id']).exists():
         raise ValueError('experiment output already exists')
-    model_check=pr.verify_model(provider,pins['model_revision'])
+    if not __import__('re').fullmatch(r'[A-Za-z0-9][A-Za-z0-9_.-]{0,127}',bundle['experiment_id']):
+        raise ValueError('unsafe experiment identity')
+    try:
+        model_check=pr.verify_model(provider,pins['model_revision'])
+    except pr.ProviderError as exc:
+        # Models lookup is separate from completion requests; no fabricated usage.
+        er.publish_artifacts(Path(output)/bundle['experiment_id'], {
+            'manifest.json':json.dumps({'manifest':asdict(manifest)}),
+            'campaign-ref.json':json.dumps({'digest':claimed,'pins':pins}),
+            'failure.json':json.dumps({'status':'aborted','phase':'model_preflight',
+                'failure_class':er.failure_category(exc),'actual_completion_requests':0,
+                'model_lookup_attempts':1,'provider_bill':None,'billing_status':'unavailable',
+                'evidence_eligible':False,'candidate_for_promotion':False,'production_mutation':False})})
+        raise pr.ProviderError('model_preflight_aborted') from None
     extras={'model-availability.json':model_check,
             'capabilities.json':{a:e.capabilities.to_mapping() for a,e in executors.items()},
             'environment.json':{'python':platform.python_version(),'system':platform.system(),**current},
