@@ -78,3 +78,9 @@ and outcome is last. Run wall time spans the earliest request/tool start through
 the outcome, including post-request tool/scoring time. Request wall time remains
 a separate full-response transport measurement. Seeded stdlib invariant tests
 exercise monetary conservation, retrieval/cache bounds and L5/L6 round trips.
+
+
+Review expanded the explicit private-key policy to standard proxy authorization,
+password/passwd/pwd, client secret, session/id/security tokens, credentials,
+private/secret/access keys and common AWS credential fields. Hyphen/underscore
+and case variants are rejected at every mapping/list depth.

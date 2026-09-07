@@ -180,10 +180,19 @@ def acceptance_gate(receipts: Sequence[te.RunReceipt], context_by_policy: Mappin
         except (re.ExperimentError, te.ReceiptError, TypeError, ValueError) as exc:
             reason = str(exc)
     performance = all(checks.values())
+    structurally_eligible = all(eligibility.values())
+    # All inputs above are caller-controlled declarations. This package has no
+    # independent attestation verifier, so they cannot authorize promotion.
+    # A future trusted control plane may consume structural diagnostics; it must
+    # authenticate the evidence outside the executor/caller trust boundary.
+    eligibility["independent_attestation_verified"] = False
     eligible = all(eligibility.values())
     return {"scope": "candidate-gate-only-no-auto-enable", "checks": checks,
             "eligibility_checks": eligibility, "eligibility_error": reason,
-            "performance_candidate": performance, "evidence_eligible": eligible,
+            "performance_candidate": performance,
+            "evidence_structurally_eligible": structurally_eligible,
+            "evidence_eligible": eligible,
+            "promotion_blocker": "independent evidence attestation is not implemented",
             "candidate_for_promotion": performance and eligible,
             "shadow_candidate_only": performance and not eligible,
             "target": target, "allow_estimated": allow_estimated,

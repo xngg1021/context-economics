@@ -30,6 +30,10 @@ SECRET_KEYS = {
     "apikey", "xapikey", "authorization", "authorizationheader", "cookie",
     "setcookie", "accesstoken", "refreshtoken", "accountid", "rawprompt",
     "rawcompletion", "prompt", "completion",
+    "proxyauthorization", "password", "passwd", "pwd", "clientsecret",
+    "sessiontoken", "sessionid", "idtoken", "token", "secret", "credential",
+    "credentials", "privatekey", "secretkey", "accesskey", "accesskeyid",
+    "secretaccesskey", "awsaccesskeyid", "awssecretaccesskey", "awssecuritytoken",
 }
 MAX_METADATA_DEPTH = 16
 MAX_METADATA_BYTES = 65536

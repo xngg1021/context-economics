@@ -8,7 +8,8 @@
 - gates only exact paired cohorts and separates performance from evidence eligibility;
 - validates calibration through the production parser and reports metric-specific win/loss directions;
 - adds injectable paired-fixed / AB/BA runner with ten artifacts and full socket E2E;
-- adds targeted adversarial and seeded invariant regressions; current local suite: 96 tests;
+- adds targeted adversarial and seeded invariant regressions; current local suite: 98 tests;
+- closes successor review findings: common authentication metadata keys, fail-closed unauthenticated promotion, and atomic artifact publication;
 - preserves L0–L6 and simulation / contract E2E public evidence; final acceptance requires PR review and post-merge CI.
 
 ## Unreleased — Runtime Evidence & Adaptive Calibration

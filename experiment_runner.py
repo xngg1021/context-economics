@@ -6,6 +6,8 @@ import json
 import re
 import subprocess
 import threading
+import tempfile
+import shutil
 from contextlib import contextmanager
 from dataclasses import asdict
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -110,10 +112,30 @@ def run_experiment(manifest: rx.ExperimentManifest, tasks: Sequence[Mapping[str,
     # Validate serialization before creating a finished directory. No task text or answers persisted.
     rendered = {name:json.dumps(te._json_safe(value),indent=2,ensure_ascii=False,allow_nan=False)+'\n'
                 for name,value in artifacts.items()}
-    output.mkdir(parents=True, exist_ok=False)
-    for name, content in rendered.items():
-        (output/name).write_text(content,encoding='utf-8')
+    publish_artifacts(output, rendered)
     return output
+
+
+def publish_artifacts(output: Path, rendered: Mapping[str, str]) -> None:
+    """Publish a complete directory only; same-parent rename is atomic."""
+    output.parent.mkdir(parents=True, exist_ok=True)
+    if output.exists() or not rendered:
+        raise RunnerError('output exists or artifact set is empty')
+    if any(not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9_.-]*', name) for name in rendered):
+        raise RunnerError('artifact names must be single safe filenames')
+    staging = Path(tempfile.mkdtemp(prefix='.'+output.name+'-',dir=output.parent))
+    try:
+        for name, content in rendered.items():
+            path = staging / name
+            path.write_text(content,encoding='utf-8')
+        # Same-parent rename is the commit point. Concurrent completed outputs
+        # are nonempty, so rename refuses to replace them. No stale lock blocks
+        # retry after process termination; orphan private staging can be removed.
+        staging.rename(output)
+        staging = None
+    finally:
+        if staging is not None:
+            shutil.rmtree(staging)
 
 
 class LocalHTTPExecutor:

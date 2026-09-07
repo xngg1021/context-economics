@@ -6,7 +6,7 @@ from tests.test_cost_ledger import tool
 
 class PrivacyRetrievalTests(unittest.TestCase):
     def test_recursive_forbidden_fields(self):
-        for key in ('Authorization','AUTHORIZATION','authorization_header','api_key','apikey','x-api-key','cookie','set-cookie','access_token','refresh_token','account_id','raw_prompt','raw_completion','prompt','completion'):
+        for key in ('Authorization','AUTHORIZATION','authorization_header','api_key','apikey','x-api-key','cookie','set-cookie','access_token','refresh_token','account_id','raw_prompt','raw_completion','prompt','completion','Proxy-Authorization','password','client_secret','session_token','session-id','id_token','token','credentials','private_key','aws_secret_access_key'):
             for wrap in (lambda x:x,lambda x:{'headers':x},lambda x:{'request':[x]},lambda x:{'a':[{'b':(x,)}]}):
                 with self.subTest(key=key,wrap=wrap):
                     r=request();r['payload']['provider_metadata']=wrap({key:'SECRET'})

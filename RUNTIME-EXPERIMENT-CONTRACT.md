@@ -172,3 +172,15 @@ Provenance includes all manifest pins, scorer/billing sources, assignment and
 bootstrap seed. Wall timings are measured and vary across executions; replaying
 the same recorded receipts yields identical statistics and acceptance. The two
 local arms are intentionally identical, proving orchestration rather than gains.
+
+
+Review hardening: artifact files are first written to a private same-parent
+staging directory and then published by atomic directory rename. Ordinary write
+failures clean staging and permit retry; hard process termination may leave an
+unpublished staging directory but no final output or stale lock. This is atomic
+visibility, not a promise of power-loss durability/fsync. Completed output
+is nonempty and is never replaced by concurrent publishers.
+
+Executor evidence_origin is an informational declaration only. Structural
+eligibility does not authenticate provider, scorer or billing evidence. Formal
+promotion is disabled until an independent trusted attestation verifier exists.

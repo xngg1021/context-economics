@@ -33,9 +33,9 @@ class PromotionTests(unittest.TestCase):
         events=[replace(e,policy_id=mapping[e.policy_id]) for e in re.load_experiment_events('fixtures/runtime_context_events.json')]
         return rows,dict(manifest=m,experiment_events=events,evidence_origin='real-provider',held_out_task_set_ref=m.task_set_ref)
     def test_structural_observed_and_estimated_paths(self):
-        rows,kw=self.evidence();self.assertTrue(self.gate(rows,**kw)['evidence_eligible'])
+        rows,kw=self.evidence();self.assertTrue(self.gate(rows,**kw)['evidence_structurally_eligible'])
         rows,kw=self.evidence('estimated');self.assertFalse(self.gate(rows,**kw)['evidence_eligible'])
-        self.assertTrue(self.gate(rows,allow_estimated=True,**kw)['evidence_eligible'])
+        self.assertTrue(self.gate(rows,allow_estimated=True,**kw)['evidence_structurally_eligible'])
     def test_synthetic_loopback_missing_scorer_and_pin_mismatch(self):
         rows,kw=self.evidence(evidence='synthetic-contract')
         self.assertFalse(self.gate(rows,**kw)['evidence_eligible'])
@@ -45,3 +45,11 @@ class PromotionTests(unittest.TestCase):
         self.assertFalse(self.gate(rows,**kw)['evidence_eligible'])
         rows,kw=self.evidence();rows[0]=replace(rows[0],model_revision='wrong')
         self.assertFalse(self.gate(rows,**kw)['evidence_eligible'])
+
+    def test_self_declared_real_provider_never_authorizes_promotion(self):
+        rows,kw=self.evidence()
+        out=self.gate(rows,**kw)
+        self.assertTrue(out['evidence_structurally_eligible'])
+        self.assertFalse(out['evidence_eligible'])
+        self.assertFalse(out['candidate_for_promotion'])
+        self.assertFalse(out['eligibility_checks']['independent_attestation_verified'])

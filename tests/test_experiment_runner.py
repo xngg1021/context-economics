@@ -37,3 +37,21 @@ class RunnerTests(unittest.TestCase):
             for bad in (replace(m,declared_evidence_class='runtime-A/B'),replace(m,experiment_id='../escape')):
                 with self.assertRaises(er.RunnerError):er.run_experiment(bad,tasks,{'control':ex,'treatment':ex},td)
             with self.assertRaises(er.RunnerError):er.run_experiment(m,tasks[:1],{'control':ex,'treatment':ex},td)
+
+    def test_atomic_publish_failure_leaves_no_finished_output_and_retry_works(self):
+        from unittest.mock import patch
+        with tempfile.TemporaryDirectory() as td:
+            output=Path(td)/'atomic'
+            original=Path.write_text
+            count=0
+            def fail_second(path,*args,**kwargs):
+                nonlocal count
+                count+=1
+                if count==2:raise OSError('simulated disk full')
+                return original(path,*args,**kwargs)
+            with patch.object(Path,'write_text',fail_second), self.assertRaises(OSError):
+                er.publish_artifacts(output,{'one.json':'{}','two.json':'{}'})
+            self.assertFalse(output.exists())
+            self.assertEqual(list(Path(td).iterdir()),[])
+            er.publish_artifacts(output,{'one.json':'{}','two.json':'{}'})
+            self.assertEqual(len(list(output.iterdir())),2)

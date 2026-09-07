@@ -37,11 +37,15 @@ Missing and duplicate arms never improve performance gates. Coverage is an
 eligibility check, not a performance metric; manifest tasks missing both arms
 still count in its denominator. Zero pairs cannot pass.
 
-`performance_candidate` reports numerical checks. `evidence_eligible` separately
+`performance_candidate` reports numerical checks. `evidence_structurally_eligible` separately
 requires a valid pinned manifest/join, sufficient paired coverage, scorer
 identity/version/provenance, v2 billing provenance, declared runtime-A/B or
 task-economic evidence, explicit real-provider origin and held-out task-set ref.
-`candidate_for_promotion` is their conjunction. Default billing must be observed;
+`evidence_eligible` additionally requires independently verified attestation. This
+package has no such verifier, so evidence_eligible and candidate_for_promotion
+remain false even when every caller declaration looks valid. A future trusted
+control plane must authenticate evidence outside the executor/caller boundary;
+there is no caller boolean that enables formal promotion. Default billing must be observed;
 only explicit `allow_estimated=True` admits estimates (reported in output).
 Synthetic/loopback evidence remains shadow-only. Eligibility is structural
 validation of supplied provenance, not authentication of the caller's claims or

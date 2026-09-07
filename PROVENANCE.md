@@ -174,3 +174,10 @@ estimated from a synthetic price, and the local arms are identical. No real
 provider credential run, runtime-A/B superiority or task-economic claim is made.
 Final review, CI IDs, successor SHA/tree and merge/main verification are recorded
 in PR #5's closeout; this file does not self-certify a future commit or review.
+
+
+Successor independent review identified three further issues, now forward-fixed:
+common credential keys, unauthenticated self-declared origins, and partial
+artifact publication. Structural evidence readiness remains available; formal
+promotion is disabled without an independent attestation verifier. Engineering
+correctness acceptance does not enable a production promotion path.
