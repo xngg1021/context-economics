@@ -99,6 +99,11 @@ def run(path, output):
     provider=pins['provider']
     if not os.environ.get(pr.CREDENTIALS[provider]):raise pr.ProviderError('credential_unavailable')
     price=pr.Price(**bundle['price']);rev=pins['model_revision']
+    rate=bundle['pricing_snapshot']['models'][rev]
+    expected_price=pr.Price(provider,rev,rate['input'],rate['output'],rate['cached_read'],
+                            'sha256:'+pins['pricing_digest'],rate.get('max_input_tokens',200000))
+    if price != expected_price or rate['provider'] != provider or rate['currency'] != 'USD' or rate['unit'] != 'per-million-tokens':
+        raise ValueError('execution price does not match pinned snapshot')
     manifest=rx.ExperimentManifest.from_mapping({
         'experiment_id':bundle['experiment_id'],'declared_evidence_class':'runtime-A/B',
         'assignment_method':'counterbalanced','control_policy':'control','treatment_policy':'treatment',

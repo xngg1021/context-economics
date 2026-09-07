@@ -98,3 +98,11 @@ class ProviderTests(unittest.TestCase):
         for rev in ['latest','gpt-4.1-mini']:
             with self.assertRaises(pr.ProviderError):pr.ProviderExecutor('openai',rev,price())
         with self.assertRaises(pr.ProviderError):pr.ProviderExecutor('anthropic',REV,price())
+
+    def test_unavailable_observation_cannot_hide_positive_ledger(self):
+        from tests.test_context_runtime import request,outcome
+        r=request();r['payload']['usage_observations']={
+            'input_tokens':10,'output_tokens':3,'cached_input_tokens':4,
+            'cache_write_tokens':None,'service_tier':None,'response_id':None}
+        with self.assertRaisesRegex(rt.TelemetryError,'zero legacy projection'):
+            rt.normalize([rt.Envelope.parse(x) for x in (r,outcome())])

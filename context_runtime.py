@@ -332,6 +332,8 @@ def normalize(events: Sequence[Envelope]) -> dict[str, object]:
                                 raise TelemetryError("usage observation conflicts with ledger")
                         elif field in {"input_tokens", "output_tokens"}:
                             raise TelemetryError("input/output usage required")
+                        elif q[field] != 0:
+                            raise TelemetryError("unavailable usage requires zero legacy projection")
                     for field in ("service_tier", "response_id"):
                         if observations[field] is not None:
                             _text(observations[field], field)

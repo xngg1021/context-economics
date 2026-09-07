@@ -354,6 +354,7 @@ def aggregate(receipts: Iterable[RunReceipt]) -> dict:
         "mean_wall_time_ms": mean(walls),
         "p50_wall_time_ms": _percentile(walls, 0.50),
         "p95_wall_time_ms": _percentile(walls, 0.95),
+        "p99_wall_time_ms": _percentile(walls, 0.99),
         "p50_ttft_ms": _percentile(ttfts, 0.50),
         "p95_ttft_ms": _percentile(ttfts, 0.95),
         "failure_classes": _failure_class_counts(rows),

@@ -53,3 +53,17 @@ class CampaignTests(unittest.TestCase):
             for name,value in index['files'].items():
                 self.assertEqual(hashlib.sha256((output/name).read_bytes()).hexdigest(),value)
             self.assertTrue((output/'capabilities.json').exists())
+
+    def test_rehashed_bundle_cannot_relabel_arbitrary_rates(self):
+        import provider_runtime as pr
+        from tests.test_provider_runtime import REV
+        source={'repository_commit':'a'*40,'repository_tree':'b'*40}
+        with tempfile.TemporaryDirectory() as td,patch.object(rc,'identity',return_value=source):
+            bundle=rc.prepare('openai',REV,'pricing/official-20260907-runtime-stage.json',
+                              Path(td)/'stage','rates','smoke',2)
+            bundle.pop('bundle_digest');bundle['price']['input']=0
+            bundle['bundle_digest']=pr.digest(bundle)
+            p=Path(td)/'tampered.json';p.write_text(json.dumps(bundle))
+            with patch.dict('os.environ',{'OPENAI_API_KEY':'FIXTURE'}),patch.object(pr,'send') as send:
+                with self.assertRaisesRegex(ValueError,'price does not match'):rc.run(p,Path(td)/'runs')
+                send.assert_not_called()
