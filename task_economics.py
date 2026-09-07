@@ -100,8 +100,6 @@ class RunReceipt:
     provider_bill_usd: float = 0.0
     provider_bill_source: str | None = None
     billing_status: str | None = None
-    cost_ledger_version: int | None = None
-    external_cost_usd: float = 0.0
     tool_cost_usd: float = 0.0
     reacquisition_cost_usd: float = 0.0
     retry_cost_usd: float = 0.0
@@ -121,6 +119,10 @@ class RunReceipt:
     scorer_version: str | None = None
     scoring_provenance: str | None = None
     notes: tuple[str, ...] = ()
+
+    # Append extension fields: retain all legacy positional constructor slots.
+    cost_ledger_version: int | None = None
+    external_cost_usd: float = 0.0
 
     def __post_init__(self):
         version = self.cost_ledger_version

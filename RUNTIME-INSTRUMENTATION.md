@@ -95,3 +95,8 @@ every nesting level. Unknown keys fail, including future credential spellings.
 Extending this namespace requires a reviewed schema change; the adapter must
 not pass arbitrary provider-native metadata through. Common compound auth/api/
 bearer/oauth token names are also explicitly denied in generic payload mappings.
+
+
+Ledger extension fields are appended after all original RunReceipt fields to
+preserve positional Python callers. A legacy positional tool cost retains its
+slot and value; tests cover both keyword and positional constructor migration.

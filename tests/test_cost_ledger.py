@@ -39,3 +39,10 @@ class CostLedgerTests(unittest.TestCase):
         self.assertEqual(legacy.observed_cost_usd,5)
         modern=te.RunReceipt('r','t','p',True,cost_ledger_version=2,tool_cost_usd=3,reacquisition_cost_usd=3,retry_cost_usd=2)
         self.assertEqual(modern.observed_cost_usd,3)
+
+    def test_legacy_positional_tool_cost_is_preserved(self):
+        receipt=te.RunReceipt('r','t','p',True,None,None,None,None,None,None,None,
+                              0,0,0,0,0,None,None,1)
+        self.assertEqual(receipt.tool_cost_usd,1)
+        self.assertEqual(receipt.observed_cost_usd,1)
+        self.assertEqual(receipt.cost_ledger_version,2)
