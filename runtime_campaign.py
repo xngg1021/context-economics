@@ -14,6 +14,13 @@ from dataclasses import asdict
 from datetime import datetime, timezone
 from pathlib import Path
 
+# Credentialed entry must use the trusted isolated bootstrap. This guard runs
+# before any repository import; -I -S bootstrap also excludes startup/pyc poison.
+if __name__ == '__main__' and any(os.environ.get(k) for k in (
+    'OPENAI_API_KEY','ANTHROPIC_API_KEY','GEMINI_API_KEY','GOOGLE_API_KEY','MOONSHOT_API_KEY')):
+    print(json.dumps({'status':'BLOCKED','reason':'use trusted_runtime_bootstrap with python -I -S'}))
+    raise SystemExit(2)
+
 import experiment_runner as er
 import provider_runtime as pr
 import runtime_experiment as rx
@@ -22,6 +29,7 @@ KINDS = ('path', 'identifier', 'number', 'date', 'negation', 'constraint',
          'intent', 'tool_protocol', 'structured_id', 'retrievable_output',
          'reasoning_state', 'social_intent')
 SOURCE_ROOT = Path(__file__).resolve().parent
+_BOOTSTRAP_SOURCE_IDENTITY = None
 
 
 def task_set(split, count):
@@ -47,6 +55,10 @@ def task_set(split, count):
 
 
 def identity():
+    if _BOOTSTRAP_SOURCE_IDENTITY is not None:
+        # Set only in the isolated child after trusted source extraction/import,
+        # before its provider credential is delivered. Not a promotion attestation.
+        return dict(_BOOTSTRAP_SOURCE_IDENTITY)
     # Source inspection is not a provider operation. Git helpers/fsmonitor must
     # never inherit runtime provider credentials or injected Git configuration.
     environment = {'PATH':os.defpath, 'LC_ALL':'C'}

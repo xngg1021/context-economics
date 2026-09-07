@@ -33,12 +33,32 @@ are forward-fixed: Git uses a minimal environment/trusted executable and explici
 source-directory cwd; run reconstructs 2–40 canonical tasks (holdout at least 24)
 and the exact reviewed policy before network. A real two-checkout regression and
 rehashed workload/policy mutations cover both findings.
+A further P1 identified local module/ignored bytecode execution before validation.
+The successor adds a trusted isolated bootstrap, credential-free validation and
+imports, exact Git-blob snapshots and post-import pipe delivery. Four process
+regressions cover dirty source, forged timestamp-valid pyc, nonisolated invocation
+and caller attempts to authorize an unreviewed commit. The operator-provided
+reviewed commit and installed launcher/Python are explicit trust prerequisites.
 New review requests target successor code; a request is not a
 clean security result. CI 34132270992 passed entry HEAD; 34137446215 passed
 successor de160a4, both Python 3.11/3.13. All 18 local workflow validation commands
-passed after the finalization fix; suite now contains 138 tests. Final exact-head
+passed after the finalization fix; suite now contains 142 tests. Final exact-head
 review/CI and unresolved-thread status must be checked in PR #6 before merge.
 Independent security completion remains a hard merge gate. No merge claimed.
+
+## Secure runtime entrypoint
+
+The original direct credentialed CLI is no longer supported. Prepare without
+credentials, then execute through a trusted installed copy of
+`trusted_runtime_bootstrap.py` with `python -I -S`, `--source`,
+`--expected-commit REVIEWED_SHA`, `--campaign` and `--output-root`.
+The reviewed SHA must come from the trusted deployment/operator, not the campaign.
+The launcher never imports repository modules: it validates clean source and
+exports Git blobs without credentials, starts an isolated secret-free child,
+imports validated snapshot modules and only then delivers the selected key via
+stdin. Ignored pyc and local startup modules cannot enter that snapshot.
+The launcher/OS/Python remain the explicitly trusted computing base; this does
+not authenticate provider evidence or defend a compromised host/launcher.
 
 ## Completed bounded engineering
 

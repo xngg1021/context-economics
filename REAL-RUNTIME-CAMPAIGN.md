@@ -48,9 +48,24 @@ python runtime_campaign.py prepare --provider openai \
   --pricing pricing/official-20260907-runtime-stage.json \
   --output artifacts/staged-smoke --experiment-id runtime-smoke-UNIQUE \
   --split smoke --count 2
-python runtime_campaign.py run \
+python -I -S /trusted/context/trusted_runtime_bootstrap.py \
+  --source /path/to/clean/context-economics --expected-commit REVIEWED_COMMIT_SHA \
   --campaign artifacts/staged-smoke/campaign.json --output-root artifacts
 ```
+
+Prepare in a credential-free process. Install/copy the reviewed
+`trusted_runtime_bootstrap.py` into a trusted location independent of the mutable
+checkout; the Python installation and this minimal launcher are the startup
+trust boundary. `--expected-commit` must be independently reviewed/verified,
+not read from caller-controlled campaign JSON. Always use `python -I -S`.
+The launcher removes provider secrets from its environment, validates Git/source
+without them, copies exact Git blobs into a fresh private snapshot (no ignored
+bytecode), imports the snapshot in a secret-free isolated child, then sends only
+the selected credential through stdin. It never stores that credential in a file
+or argv. A separate unreviewed commit cannot be authorized by rehashing a bundle.
+Direct credential-bearing runtime_campaign CLI execution is refused. Calling
+Python APIs from an arbitrary credential-bearing interpreter is not the secure
+entrypoint and cannot provide this startup boundary.
 
 Supply credentials through the runtime's secret environment facility
 (`OPENAI_API_KEY` or `ANTHROPIC_API_KEY`), never chat, CLI arguments, committed
