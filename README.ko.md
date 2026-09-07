@@ -202,7 +202,7 @@ success_rate
 | [`CHANGELOG.md`](CHANGELOG.md) | Version별 역사. 과거 Review/debug chronology는 여기에 기록 |
 | [`VERSIONING.md`](VERSIONING.md) | Version policy와 milestone map |
 | [`PROVENANCE.md`](PROVENANCE.md) | Evidence class, source identity, provenance |
-| [`FINAL-EVIDENCE-BOUNDARY.md`](FINAL-EVIDENCE-BOUNDARY.md) | 0.6.x exact closeout boundary |
+| [`FINAL-EVIDENCE-BOUNDARY.md`](FINAL-EVIDENCE-BOUNDARY.md) | 현재 0.6.x evidence boundary와 남은 empirical gap |
 | [`RUNTIME-INSTRUMENTATION.md`](RUNTIME-INSTRUMENTATION.md) | Canonical runtime telemetry |
 | [`RUNTIME-EXPERIMENT-CONTRACT.md`](RUNTIME-EXPERIMENT-CONTRACT.md) | Version-pinned experiment contract |
 | [`EXPERIMENT-ACCEPTANCE.md`](EXPERIMENT-ACCEPTANCE.md) | Statistical/evidence acceptance |
@@ -226,7 +226,7 @@ Hermes의 일반적인 mid-session memory write는 disk에는 반영되지만 �
 
 ## Validation
 
-0.6.0 engineering milestone은 merge 후 Python 3.11 / 3.13 full validation matrix를 통과했습니다. 0.6.1은 homepage/version history/localization productization patch이며 동일한 CI를 통과한 뒤 수용합니다.
+지원되는 standard-library engineering surface는 Python 3.11과 3.13에서 검증합니다. 각 version의 구체적인 CI identity, Review, acceptance chronology는 [`CHANGELOG.md`](CHANGELOG.md)에 기록하며 homepage에는 남기지 않습니다.
 
 ## Version history
 
