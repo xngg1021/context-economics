@@ -300,6 +300,7 @@ def aggregate_access(events: Iterable[ContextAccessEvent]) -> dict:
 
     used_prefetches = sum(1 for row in prefetch_rows if row.used)
     avoided_prefetches = sum(1 for row in prefetch_rows if row.avoided_miss is True)
+    labeled_prefetches = [row for row in prefetch_rows if row.avoided_miss is not None]
     total_prefetched = sum(row.prefetched_units for row in prefetch_rows)
     unused_prefetched = sum(
         row.prefetched_units for row in prefetch_rows if row.used is False
@@ -343,6 +344,16 @@ def aggregate_access(events: Iterable[ContextAccessEvent]) -> dict:
             used_prefetches / len(prefetch_rows) if prefetch_rows else None
         ),
         "prefetch_observed_avoided_misses": avoided_prefetches,
+        "prefetch_coverage": (
+            avoided_prefetches / len(miss_rows)
+            if miss_rows and labeled_prefetches
+            else None
+        ),
+        "prefetch_coverage_basis": (
+            "caller-labeled-avoided-misses-over-raw-misses"
+            if miss_rows and labeled_prefetches
+            else None
+        ),
         "prefetch_units": total_prefetched,
         "unused_prefetched_units": unused_prefetched,
         "prefetch_pollution_rate": (

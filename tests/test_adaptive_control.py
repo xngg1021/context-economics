@@ -23,6 +23,26 @@ class TelemetryTests(unittest.TestCase):
         self.assertEqual(report["raw_misses"], 1)
         self.assertEqual(report["planned_retrievals"], 1)
 
+    def test_prefetch_coverage_requires_caller_labels_and_raw_misses(self):
+        events = [
+            ac.ContextAccessEvent("m1", "t1", "soft_miss", "a", avoidable=True),
+            ac.ContextAccessEvent("m2", "t2", "hard_miss", "b", avoidable=True),
+            ac.ContextAccessEvent("p1", "t1", "prefetch", "a", used=True,
+                                  avoided_miss=True, prefetched_units=1),
+        ]
+        report = ac.aggregate_access(events)
+        self.assertEqual(report["prefetch_coverage"], 0.5)
+        self.assertEqual(
+            report["prefetch_coverage_basis"],
+            "caller-labeled-avoided-misses-over-raw-misses",
+        )
+
+        unlabeled = ac.aggregate_access([
+            ac.ContextAccessEvent("m3", "t3", "soft_miss", "a", avoidable=True),
+        ])
+        self.assertIsNone(unlabeled["prefetch_coverage"])
+        self.assertIsNone(unlabeled["prefetch_coverage_basis"])
+
     def test_unknown_fields_and_duplicate_ids_fail(self):
         with self.assertRaises(ac.ControlError):
             ac.ContextAccessEvent.from_mapping({
