@@ -37,7 +37,7 @@ def task_set(split, count):
         fact=f'The exact required value of {kind} is: {value}'
         noise=[f'Unrelated archived item {j} in {split}.' for j in range(12)]
         # Alternate early/tail facts; preserve negative outcomes when bounding loses facts.
-        history=[fact]+noise if i%2 == 0 else noise+[fact]
+        history=[fact]+noise if (i + i//len(KINDS))%2 == 0 else noise+[fact]
         tasks.append({'task_id':f'{split}-{i:03d}', 'content_type':kind,'history':history,
                       'input':f'Return only the exact required value of {kind} from the history.',
                       'expected_answer':value})
@@ -54,6 +54,8 @@ def identity():
 def prepare(provider, revision, pricing_path, output, experiment_id, split, count):
     source=identity()
     snapshot=json.loads(Path(pricing_path).read_text())
+    from pricing_refresh import check
+    if check(snapshot)['stale']:raise ValueError('pricing snapshot stale')
     row=snapshot['models'][revision]
     price=pr.Price(provider,revision,row['input'],row['output'],row['cached_read'],
                    'sha256:'+pr.digest(snapshot),row.get('max_input_tokens',200000))
@@ -92,6 +94,8 @@ def run(path, output):
         raise ValueError('task/policy digest mismatch')
     if pr.digest(bundle['pricing_snapshot'])!=pins['pricing_digest']:
         raise ValueError('pricing digest mismatch')
+    from pricing_refresh import check
+    if check(bundle['pricing_snapshot'])['stale']:raise ValueError('pricing snapshot stale')
     provider=pins['provider']
     if not os.environ.get(pr.CREDENTIALS[provider]):raise pr.ProviderError('credential_unavailable')
     price=pr.Price(**bundle['price']);rev=pins['model_revision']

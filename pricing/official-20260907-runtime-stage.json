@@ -1,0 +1,97 @@
+{
+  "schema_version": 1,
+  "retrieved_at": "2026-09-07T14:03:33.784520+00:00",
+  "retrieval_method": "manual official web source check",
+  "content_digest_status": "source full bytes unavailable; snapshot digest is not a webpage digest",
+  "models": {
+    "gpt-4.1-mini-2025-04-14": {
+      "effective_date": null,
+      "currency": "USD",
+      "unit": "per-million-tokens",
+      "cache_write": null,
+      "cache_storage": null,
+      "ttl": null,
+      "long_context_threshold": null,
+      "service_tier": "standard",
+      "batch": "separate pricing; not applied",
+      "source_digest": null,
+      "provider": "openai",
+      "model": "gpt-4.1-mini",
+      "input": 0.4,
+      "output": 1.6,
+      "cached_read": 0.1,
+      "source": "https://developers.openai.com/api/docs/models/gpt-4.1-mini",
+      "max_input_tokens": 200000,
+      "cache_semantics": "automatic prefix caching; no explicit cache toggle"
+    },
+    "claude-haiku-4-5-20251001": {
+      "effective_date": null,
+      "currency": "USD",
+      "unit": "per-million-tokens",
+      "cache_write": {
+        "5m": 1.25,
+        "1h": 2.0
+      },
+      "cache_storage": null,
+      "ttl": [
+        "5m",
+        "1h"
+      ],
+      "long_context_threshold": null,
+      "service_tier": "standard",
+      "batch": "separate pricing; not applied",
+      "source_digest": null,
+      "provider": "anthropic",
+      "model": "claude-haiku-4-5",
+      "input": 1.0,
+      "output": 5.0,
+      "cached_read": 0.1,
+      "source": "https://platform.claude.com/docs/en/about-claude/pricing",
+      "max_input_tokens": 200000,
+      "revision_status": "fixture/staged; verify Models API availability before live use"
+    },
+    "gemini-3.1-flash-lite": {
+      "effective_date": null,
+      "currency": "USD",
+      "unit": "per-million-tokens",
+      "cache_write": null,
+      "cache_storage": {
+        "amount": 1.0,
+        "unit": "USD per million tokens per hour"
+      },
+      "ttl": null,
+      "long_context_threshold": null,
+      "service_tier": "standard",
+      "batch": "separate pricing; not applied",
+      "source_digest": null,
+      "provider": "gemini",
+      "model": "gemini-3.1-flash-lite",
+      "input": 0.25,
+      "output": 1.5,
+      "cached_read": 0.025,
+      "source": "https://ai.google.dev/gemini-api/docs/pricing",
+      "modality": "text/image/video; audio separately priced",
+      "runtime_adapter": "not implemented"
+    },
+    "kimi-k3": {
+      "effective_date": null,
+      "currency": "CNY",
+      "unit": "per-million-tokens",
+      "cache_write": null,
+      "cache_storage": null,
+      "ttl": null,
+      "long_context_threshold": null,
+      "service_tier": "standard",
+      "batch": "separate pricing; not applied",
+      "source_digest": null,
+      "provider": "kimi",
+      "model": "kimi-k3",
+      "input": 20.0,
+      "output": 100.0,
+      "cached_read": 2.0,
+      "source": "https://www.kimi.com/resources/kimi-k3-pricing",
+      "runtime_adapter": "not implemented",
+      "source_limitation": "official resources page; platform pricing page retrieval failed; no USD conversion inferred"
+    }
+  }
+}

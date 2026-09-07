@@ -1,0 +1,18 @@
+{
+  "repository": "NousResearch/hermes-agent",
+  "commit": "f17f18cd11e0dc203e683ab2b77b6a5aafe5afa7",
+  "path": "agent/context_compressor.py",
+  "source_sha256": "454bf3779ca3ad8c5b07f7a093eeb5f13f77ddec4a64ffc18b2168989813bec0",
+  "methods": [
+    "tail_token_budget",
+    "max_summary_tokens",
+    "_align_boundary_backward",
+    "_align_boundary_forward"
+  ],
+  "constants": [
+    "LEAN_TAIL_FLOOR_TOKENS",
+    "LEAN_TAIL_CAP_TOKENS",
+    "_SUMMARY_TOKENS_CEILING"
+  ],
+  "scope": "partial exact-source structural replay; no full compressor or transport execution"
+}
