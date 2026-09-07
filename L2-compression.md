@@ -1,5 +1,7 @@
 # 上下文压缩/上下文管理学术研究前沿调研（截至 2026-08-19）
 
+> Runtime successor status (2026-09-07): provider adapters are fixture-tested; credential-backed evidence is BLOCKED by runtime authorization. Expanded Hermes component trace-replay and deterministic retention-task fixtures do not establish runtime-A/B or task-economic results. Production mutation remains disabled. See [REAL-RUNTIME-CAMPAIGN.md](REAL-RUNTIME-CAMPAIGN.md).
+
 > 用途：「大模型上下文经济学」研究的算法侧基础。所有指标以论文/官方表述为准；标注「未逐项核实」者为本轮搜索未能核对原始表格。
 
 ## 1. 软压缩 / 提示压缩（hard text，token 删除/选择）

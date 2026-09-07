@@ -55,3 +55,25 @@ class RunnerTests(unittest.TestCase):
             self.assertEqual(list(Path(td).iterdir()),[])
             er.publish_artifacts(output,{'one.json':'{}','two.json':'{}'})
             self.assertEqual(len(list(output.iterdir())),2)
+
+    def test_noncanonical_partial_payload_never_reaches_artifacts(self):
+        from tests.test_context_runtime import request
+        for raises in (False, True):
+            class Unsafe:
+                evidence_origin='loopback'
+                def execute(self, task, *, run_id, policy_id, manifest):
+                    event=request()
+                    event.update(run_id=run_id,task_id=task['task_id'],policy_id=policy_id)
+                    yield event
+                    event={**event,'event_id':event['event_id']+'-unsafe',
+                           'payload':{'response_text':'PRIVATE-ANSWER'}}
+                    yield event
+                    if raises:raise RuntimeError('PRIVATE-ERROR')
+            m=er.local_manifest('unsafe','a'*40)
+            with tempfile.TemporaryDirectory() as td:
+                with self.assertRaises(er.RunnerError):
+                    er.run_experiment(m,[{'task_id':t} for t in m.expected_task_ids],
+                                      {'control':Unsafe(),'treatment':Unsafe()},td)
+                p=Path(td)/'unsafe'
+                self.assertEqual(len(json.loads((p/'raw-telemetry.json').read_text())['events']),1)
+                self.assertTrue(all('PRIVATE-' not in f.read_text() for f in p.iterdir()))

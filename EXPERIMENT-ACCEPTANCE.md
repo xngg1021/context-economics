@@ -1,5 +1,7 @@
 # Experiment analysis and acceptance
 
+> Runtime successor status (2026-09-07): provider adapters are fixture-tested; credential-backed evidence is BLOCKED by runtime authorization. Expanded Hermes component trace-replay and deterministic retention-task fixtures do not establish runtime-A/B or task-economic results. Production mutation remains disabled. See [REAL-RUNTIME-CAMPAIGN.md](REAL-RUNTIME-CAMPAIGN.md).
+
 `experiment_analysis.py` creates deterministic AB/BA schedules, reports paired
 mean, median, p50, p95, range and win/loss/tie counts, and supplies a fixed-seed
 paired bootstrap mean interval. Fewer than 20 pairs is labeled
@@ -42,11 +44,12 @@ requires a valid pinned manifest/join, sufficient paired coverage, scorer
 identity/version/provenance, v2 billing provenance, declared runtime-A/B or
 task-economic evidence, explicit real-provider origin and held-out task-set ref.
 `evidence_eligible` additionally requires independently verified attestation. This
-package has no such verifier, so evidence_eligible and candidate_for_promotion
+package has an offline external-reference verifier with no provisioned independent
+trust roots or acceptance-gate integration, so evidence_eligible and candidate_for_promotion
 remain false even when every caller declaration looks valid. A future trusted
 control plane must authenticate evidence outside the executor/caller boundary;
 there is no caller boolean that enables formal promotion. Default billing must be observed;
-only explicit `allow_estimated=True` admits estimates (reported in output).
+only explicit `allow_estimated=True` with target `runtime-A/B` admits estimates (reported in output). Target `task-economic` always requires observed billing, even when the estimate flag is supplied.
 Synthetic/loopback evidence remains shadow-only. Eligibility is structural
 validation of supplied provenance, not authentication of the caller's claims or
 proof of statistical superiority. No production mutation is performed.

@@ -56,7 +56,7 @@ Context Economics 的 L0–L6 是分析/控制 Layer；THM 的 T0–T3 是独立
 
 `context_runtime.py` 提供严格、版本化的 request/tool/context/compression/outcome schema、collector 和 normalizer；`runtime_http.py` 提供最小 OpenAI-compatible HTTP adapter；`experiment_analysis.py` 提供 AB/BA counterbalance、paired descriptive statistics、deterministic bootstrap 和 hard gate；`controller_calibration.py` 提供 train/holdout 分离的 offline replay sweep。
 
-详见 `RUNTIME-INSTRUMENTATION.md`、`RUNTIME-EXPERIMENT-CONTRACT.md` 与 `EXPERIMENT-ACCEPTANCE.md`。所有 public fixture 均为 synthetic。`performance_candidate` 与 `evidence_eligible` 分开判断；只有两者都通过才允许 `candidate_for_promotion`。当前尚未实现独立证据认证，因此正式 promotion 保持 false；调用方声明只决定 `evidence_structurally_eligible`，不会自动启用生产 controller。
+详见 `RUNTIME-INSTRUMENTATION.md`、`RUNTIME-EXPERIMENT-CONTRACT.md` 与 `EXPERIMENT-ACCEPTANCE.md`。所有 public fixture 均为 synthetic。`performance_candidate` 与 `evidence_eligible` 分开判断；只有两者都通过才允许 `candidate_for_promotion`。现已实现离线外部认证引用验证器，但未配置独立信任根或接通认证 gate，因此正式 promotion 保持 false；调用方声明只决定 `evidence_structurally_eligible`，不会自动启用生产 controller。
 
 `experiment_runner.py` 把 task set → paired-fixed / AB/BA → injectable executor → raw telemetry → L5/L6 → joint report → statistics → acceptance 串成完整执行链：
 
@@ -67,7 +67,11 @@ python runtime_experiment.py --manifest artifacts/local-e2e/manifest.json --rece
 
 标准 HTTP adapter 支持 `choices[0].message.content`、标准 cached usage 和旧 fixture。端点不提供账单时必须提供带定价来源的 estimator，结果明确为 estimated；非流式 TTFT 为 null，完整响应耗时单独记录。完整本地 E2E 已覆盖实际 socket、十份产物和重放确定性，公开证据仍为 simulation / contract E2E。
 
-本轮恢复从 **Correctness Acceptance Pending** 开始。最终 engineering acceptance 以 PR #5 的 review / CI / merge 后 main closeout 为准；这不等于真实 provider runtime-A/B 完成。
+PR #5 engineering pipeline 已验收：main `79447daafd365edb228c4864fc630f6265dc6287`，post-merge validate `34109557962` 成功。真实 provider evidence pending/staged；task-economic evidence 尚未建立；production controller mutation disabled。
+
+## 真实 runtime 续工状态
+
+`provider_runtime.py` 已提供 OpenAI / Anthropic native adapter，`runtime_campaign.py` 可冻结并执行分阶段 AB/BA。当前只通过 fixture 验证；无可用 provider credential，真实 smoke、held-out A/B、observed-bill task-economic 均未建立。Hermes 仅完成局部原函数结构重放。生产 controller 仍禁用。运行方法、缺失计量语义和逐阶段边界见 [REAL-RUNTIME-CAMPAIGN.md](REAL-RUNTIME-CAMPAIGN.md)。
 
 ## 3. 核心成本模型
 
@@ -371,12 +375,25 @@ L4-memory-profile.md
 L5-task-economics.md
 L6-adaptive-context-control.md
 RUNTIME-EXPERIMENT-CONTRACT.md
+RUNTIME-INSTRUMENTATION.md
+EXPERIMENT-ACCEPTANCE.md
 
 model.py
 real_model.py
 task_economics.py
 adaptive_control.py
 runtime_experiment.py
+context_runtime.py
+runtime_http.py
+experiment_analysis.py
+experiment_runner.py
+controller_calibration.py
+provider_runtime.py
+runtime_campaign.py
+research_evaluations.py
+hermes_structural_replay.py
+pricing_refresh.py
+REAL-RUNTIME-CAMPAIGN.md
 
 fixtures/sample_sessions.json
 fixtures/run_receipts.json
@@ -402,7 +419,7 @@ tests/test_docs.py
 1. 为当前 Hermes compressor 做 **exact-version replay**：固定 summary budget、tail mode、protected messages、prompt rebuild 与 provider transport。
 2. 保存 per-request billing trace，而不是只使用 session aggregate。
 3. 用 `runtime_experiment.py` 的 contract 真正执行 version-pinned held-out task A/B，并用真实 task outcome 校准 `real_model.py` 中的 proxy retention curve。
-4. 将 tool/reacquisition/retry/latency 与 L6 context events 自动采集进同一 run，而不是只接受离线 JSON。
+4. Collector、normalizer、runner 已聚合 canonical events；尚需真实 provider/harness adapters 自动映射 native tool/reacquisition/retry/latency 与 L6 telemetry。
 5. 研究按内容类型的 retention policy：路径、数字、时间、否定约束、用户意图、tool protocol、可重取 tool output 应区别处理。
 6. 对 L0 pricing snapshot 做定期刷新；快衰减信息不能永久写死在“定律”里。
 7. 在不同 provider/cache tier 上做 `cache × compression` factorial A/B，检验任务层是替代还是互补。
@@ -420,3 +437,13 @@ tests/test_docs.py
 - The Sleeping Agent: https://arxiv.org/abs/2608.11775
 
 更早文献继续保留在 L0–L3 原始底稿中；来源与版本边界见 `PROVENANCE.md`。
+
+## PR #6 final evidence boundary
+
+续工已增加精确 Models API 核查、Git 子进程密钥及仓库定位变量隔离、执行前重新生成有界规范任务、保留部分请求遥测的分类失败记录、至少 24 对 holdout、离线外部认证验证器，以及 12 类确定性任务和独立重取实验。Hermes 固定源码回放扩展至头部保护衰减、消息组装、摘要模板和状态清理；完整 compressor/LLM 摘要/host transport 仍未完成。
+
+五种 provider 环境密钥均不存在，真实请求与配对任务均为 0；费用、真实成功率和性能指标均 unavailable。Fixture 结果不能升级为真实证据。独立信任根为空，L6 保持 shadow，production mutation=false。当前验收及全部缺口见 [FINAL-EVIDENCE-BOUNDARY.md](FINAL-EVIDENCE-BOUNDARY.md)。
+
+真实调用必须通过受信任副本的 `trusted_runtime_bootstrap.py`（`python -I -S`，显式指定独立核实的 `--expected-commit` 和 `--expected-campaign-digest`）。它先无密钥校验并提取 Git blob，在隔离子进程完成导入后才通过管道交付所选密钥；普通 CLI 拒绝直接带密钥启动。参见上述实验合同的完整命令。
+
+可信运行目前要求 POSIX 系统的 `/usr/bin/git`；Windows 或缺少该固定安装路径时拒绝启动。失败遥测也先经过与 normalizer 相同的单事件字段校验。

@@ -181,3 +181,7 @@ common credential keys, unauthenticated self-declared origins, and partial
 artifact publication. Structural evidence readiness remains available; formal
 promotion is disabled without an independent attestation verifier. Engineering
 correctness acceptance does not enable a production promotion path.
+
+## Real-runtime successor after PR #5
+
+Remote main independently confirmed as `79447daafd365edb228c4864fc630f6265dc6287`, tree `a3eba4099fb8abd24c686ceb16b2ae34fae7aa66`. Prior provenance is retained. New engineering, pricing sources and partial structural evidence boundaries are recorded in REAL-RUNTIME-CAMPAIGN.md; final PR/CI/review identity belongs in the successor closeout. No credential-backed runtime evidence or observed billing was obtained.

@@ -198,6 +198,7 @@ class Collector:
     def capture(self, native_event: Mapping[str, object]) -> None:
         for raw in self.adapter.adapt(native_event):
             event = Envelope.parse(raw)
+            validate_event_payload(event)
             if event.event_id in self._ids:
                 raise TelemetryError(f"duplicate event_id: {event.event_id}")
             self._ids.add(event.event_id)
@@ -246,6 +247,135 @@ def _exact(payload: Mapping[str, object], allowed: set[str], required: set[str],
         )
 
 
+def validate_event_payload(event: Envelope) -> dict[str, object]:
+    """Validate one event before retention, independently of run completeness."""
+    run_id, task_id, policy_id = event.run_id, event.task_id, event.policy_id
+    p = event.payload
+    if event.event_kind == "request":
+        allowed = {
+            "request_id", "sequence_index", "provider", "model", "model_revision",
+            "endpoint_tier", "request_start", "request_end", "input_tokens",
+            "cached_input_tokens", "uncached_input_tokens", "cache_write_tokens",
+            "output_tokens", "provider_bill_usd", "provider_bill_source",
+            "billing_status", "ttft_ms", "request_wall_time_ms",
+            "context_length_before", "context_length_after", "compression_triggered",
+            "compression_id", "cache_routing_hint", "cache_break_observed",
+            "provider_metadata", "usage_observations",
+        }
+        required = {
+            "request_id", "sequence_index", "provider", "model", "model_revision",
+            "request_start", "request_end", "input_tokens", "cached_input_tokens",
+            "uncached_input_tokens", "cache_write_tokens", "output_tokens",
+            "provider_bill_usd", "provider_bill_source", "billing_status",
+            "ttft_ms", "request_wall_time_ms", "context_length_before",
+            "context_length_after", "compression_triggered",
+        }
+        _exact(p, allowed, required, "request")
+        q = dict(p)
+        for key in ("request_id", "provider", "model", "model_revision", "provider_bill_source", "billing_status"):
+            q[key] = _text(q[key], key)
+        q["sequence_index"] = _int(q["sequence_index"], "sequence_index")
+        for key in ("input_tokens", "cached_input_tokens", "uncached_input_tokens", "cache_write_tokens", "output_tokens", "context_length_before", "context_length_after"):
+            q[key] = _int(q[key], key)
+        if q["cached_input_tokens"] + q["uncached_input_tokens"] != q["input_tokens"]:
+            raise TelemetryError("cached + uncached input tokens must equal input_tokens")
+        for key in ("provider_bill_usd", "ttft_ms", "request_wall_time_ms"):
+            q[key] = None if key == "ttft_ms" and q[key] is None else _num(q[key], key)
+        q["compression_triggered"] = _bool(q["compression_triggered"], "compression_triggered")
+        q["request_start"] = _time(q["request_start"], "request_start")
+        q["request_end"] = _time(q["request_end"], "request_end")
+        if _time_dt(event.occurred_at) < _time_dt(q["request_end"]):
+            raise TelemetryError("request event precedes request completion")
+        if _time_dt(q["request_end"]) < _time_dt(q["request_start"]):
+            raise TelemetryError("request_end precedes request_start")
+        status = _text(q["billing_status"], "billing_status")
+        if status not in {"observed", "estimated"}:
+            raise TelemetryError("billing_status must be observed or estimated")
+        if "provider_metadata" in q:
+            q["provider_metadata"] = _mapping(q["provider_metadata"], "provider_metadata")
+        if "usage_observations" in q:
+            observations = _mapping(q["usage_observations"], "usage_observations")
+            observation_fields = {"input_tokens", "output_tokens", "cached_input_tokens", "cache_write_tokens", "service_tier", "response_id"}
+            _exact(observations, observation_fields, observation_fields, "usage_observations")
+            for field in observation_fields - {"service_tier", "response_id"}:
+                value = observations[field]
+                if value is not None:
+                    _int(value, field)
+                    if value != q[field]:
+                        raise TelemetryError("usage observation conflicts with ledger")
+                elif field in {"input_tokens", "output_tokens"}:
+                    raise TelemetryError("input/output usage required")
+                elif q[field] != 0:
+                    raise TelemetryError("unavailable usage requires zero legacy projection")
+            for field in ("service_tier", "response_id"):
+                if observations[field] is not None:
+                    _text(observations[field], field)
+            q["usage_observations"] = observations
+        return q
+    elif event.event_kind == "tool":
+        allowed = {"tool_call_id", "tool_name", "category", "start", "end", "cost_usd", "result_size_bytes", "result_token_estimate", "retry", "error", "whether_reacquisition", "reacquisition_reason", "is_retrieval"}
+        required = allowed - {"reacquisition_reason", "is_retrieval"}
+        _exact(p, allowed, required, "tool")
+        q = dict(p)
+        for key in ("tool_call_id", "tool_name", "category"):
+            q[key] = _text(q[key], key)
+        for key in ("cost_usd",): q[key] = _num(q[key], key)
+        for key in ("result_size_bytes", "result_token_estimate"): q[key] = _int(q[key], key)
+        for key in ("retry", "error", "whether_reacquisition"): q[key] = _bool(q[key], key)
+        if q["category"] not in TOOL_CATEGORIES:
+            raise TelemetryError("unsupported tool category")
+        q["is_retrieval"] = _bool(q.get("is_retrieval", q["category"] == "retrieval" or q["whether_reacquisition"]), "is_retrieval")
+        if q["whether_reacquisition"] and not q["is_retrieval"]:
+            raise TelemetryError("reacquisition requires is_retrieval=true")
+        q["start"] = _time(q["start"], "tool.start")
+        q["end"] = _time(q["end"], "tool.end")
+        if _time_dt(event.occurred_at) < _time_dt(q["end"]):
+            raise TelemetryError("tool event precedes tool completion")
+        if _time_dt(q["end"]) < _time_dt(q["start"]):
+            raise TelemetryError("tool end precedes start")
+        reason = q.get("reacquisition_reason")
+        if q["whether_reacquisition"] and not _text(reason, "reacquisition_reason", optional=True):
+            raise TelemetryError("reacquisition requires a reason")
+        return q
+    elif event.event_kind == "context":
+        allowed = {"kind", "asset_id", "avoidable", "extra_cost_units", "extra_tokens", "extra_tool_calls", "extra_latency_ms", "provider_cost_usd", "used", "avoided_miss", "avoided_cost_units", "prefetched_units", "confidence"}
+        _exact(p, allowed, {"kind", "asset_id"}, "context")
+        if p["kind"] not in CONTEXT_KINDS:
+            raise TelemetryError(f"unsupported context kind: {p['kind']}")
+        candidate = {"event_id": event.event_id, "task_id": task_id, **p}
+        try:
+            canonical = ac.ContextAccessEvent.from_mapping(candidate)
+        except ac.ControlError as exc:
+            raise TelemetryError(str(exc)) from exc
+        return {
+            "run_id": run_id, "policy_id": policy_id,
+            **{f.name: getattr(canonical, f.name) for f in fields(ac.ContextAccessEvent)},
+        }
+    elif event.event_kind == "compression":
+        allowed = {"compression_id", "trigger_reason", "pre_context_length", "post_context_length", "retained_recent_tail", "summary_budget", "protected_messages", "provider_visible_prompt_mutation", "cache_break_observed"}
+        _exact(p, allowed, allowed, "compression")
+        q = dict(p)
+        for key in ("compression_id", "trigger_reason"):
+            q[key] = _text(q[key], key)
+        for key in ("pre_context_length", "post_context_length", "retained_recent_tail", "summary_budget", "protected_messages"): q[key] = _int(q[key], key)
+        q["provider_visible_prompt_mutation"] = _bool(q["provider_visible_prompt_mutation"], "provider_visible_prompt_mutation")
+        if q["cache_break_observed"] not in {True, False, "unknown"}:
+            raise TelemetryError("cache_break_observed must be true, false, or unknown")
+        return q
+    else:
+        allowed = {"success", "task_score", "scorer_id", "scorer_version", "failure_class", "scoring_provenance", "harness_revision"}
+        required = allowed - {"failure_class"}
+        _exact(p, allowed, required, "outcome")
+        q = dict(p)
+        for key in ("scorer_id", "scorer_version", "scoring_provenance", "harness_revision"):
+            q[key] = _text(q[key], key)
+        q["success"] = _bool(q["success"], "success")
+        q["task_score"] = _num(q["task_score"], "task_score", minimum=-math.inf)
+        if q["scoring_provenance"] not in {"human", "automatic", "benchmark"}:
+            raise TelemetryError("invalid scoring_provenance")
+        return q
+
+
 def normalize(events: Sequence[Envelope]) -> dict[str, object]:
     """Normalize a multi-run event stream into L5 receipts and L6 events."""
     if not events:
@@ -277,112 +407,12 @@ def normalize(events: Sequence[Envelope]) -> dict[str, object]:
         if rows[-1].event_kind != "outcome":
             raise TelemetryError("outcome must be the last event in a run")
         for event in rows:
-            p = event.payload
-            if event.event_kind == "request":
-                allowed = {
-                    "request_id", "sequence_index", "provider", "model", "model_revision",
-                    "endpoint_tier", "request_start", "request_end", "input_tokens",
-                    "cached_input_tokens", "uncached_input_tokens", "cache_write_tokens",
-                    "output_tokens", "provider_bill_usd", "provider_bill_source",
-                    "billing_status", "ttft_ms", "request_wall_time_ms",
-                    "context_length_before", "context_length_after", "compression_triggered",
-                    "compression_id", "cache_routing_hint", "cache_break_observed",
-                    "provider_metadata",
-                }
-                required = {
-                    "request_id", "sequence_index", "provider", "model", "model_revision",
-                    "request_start", "request_end", "input_tokens", "cached_input_tokens",
-                    "uncached_input_tokens", "cache_write_tokens", "output_tokens",
-                    "provider_bill_usd", "provider_bill_source", "billing_status",
-                    "ttft_ms", "request_wall_time_ms", "context_length_before",
-                    "context_length_after", "compression_triggered",
-                }
-                _exact(p, allowed, required, "request")
-                q = dict(p)
-                for key in ("request_id", "provider", "model", "model_revision", "provider_bill_source", "billing_status"):
-                    q[key] = _text(q[key], key)
-                q["sequence_index"] = _int(q["sequence_index"], "sequence_index")
-                for key in ("input_tokens", "cached_input_tokens", "uncached_input_tokens", "cache_write_tokens", "output_tokens", "context_length_before", "context_length_after"):
-                    q[key] = _int(q[key], key)
-                if q["cached_input_tokens"] + q["uncached_input_tokens"] != q["input_tokens"]:
-                    raise TelemetryError("cached + uncached input tokens must equal input_tokens")
-                for key in ("provider_bill_usd", "ttft_ms", "request_wall_time_ms"):
-                    q[key] = None if key == "ttft_ms" and q[key] is None else _num(q[key], key)
-                q["compression_triggered"] = _bool(q["compression_triggered"], "compression_triggered")
-                q["request_start"] = _time(q["request_start"], "request_start")
-                q["request_end"] = _time(q["request_end"], "request_end")
-                if _time_dt(event.occurred_at) < _time_dt(q["request_end"]):
-                    raise TelemetryError("request event precedes request completion")
-                if _time_dt(q["request_end"]) < _time_dt(q["request_start"]):
-                    raise TelemetryError("request_end precedes request_start")
-                status = _text(q["billing_status"], "billing_status")
-                if status not in {"observed", "estimated"}:
-                    raise TelemetryError("billing_status must be observed or estimated")
-                if "provider_metadata" in q:
-                    q["provider_metadata"] = _mapping(q["provider_metadata"], "provider_metadata")
-                requests.append(q)
-            elif event.event_kind == "tool":
-                allowed = {"tool_call_id", "tool_name", "category", "start", "end", "cost_usd", "result_size_bytes", "result_token_estimate", "retry", "error", "whether_reacquisition", "reacquisition_reason", "is_retrieval"}
-                required = allowed - {"reacquisition_reason", "is_retrieval"}
-                _exact(p, allowed, required, "tool")
-                q = dict(p)
-                for key in ("tool_call_id", "tool_name", "category"):
-                    q[key] = _text(q[key], key)
-                for key in ("cost_usd",): q[key] = _num(q[key], key)
-                for key in ("result_size_bytes", "result_token_estimate"): q[key] = _int(q[key], key)
-                for key in ("retry", "error", "whether_reacquisition"): q[key] = _bool(q[key], key)
-                if q["category"] not in TOOL_CATEGORIES:
-                    raise TelemetryError("unsupported tool category")
-                q["is_retrieval"] = _bool(q.get("is_retrieval", q["category"] == "retrieval" or q["whether_reacquisition"]), "is_retrieval")
-                if q["whether_reacquisition"] and not q["is_retrieval"]:
-                    raise TelemetryError("reacquisition requires is_retrieval=true")
-                q["start"] = _time(q["start"], "tool.start")
-                q["end"] = _time(q["end"], "tool.end")
-                if _time_dt(event.occurred_at) < _time_dt(q["end"]):
-                    raise TelemetryError("tool event precedes tool completion")
-                if _time_dt(q["end"]) < _time_dt(q["start"]):
-                    raise TelemetryError("tool end precedes start")
-                reason = q.get("reacquisition_reason")
-                if q["whether_reacquisition"] and not _text(reason, "reacquisition_reason", optional=True):
-                    raise TelemetryError("reacquisition requires a reason")
-                tools.append(q)
-            elif event.event_kind == "context":
-                allowed = {"kind", "asset_id", "avoidable", "extra_cost_units", "extra_tokens", "extra_tool_calls", "extra_latency_ms", "provider_cost_usd", "used", "avoided_miss", "avoided_cost_units", "prefetched_units", "confidence"}
-                _exact(p, allowed, {"kind", "asset_id"}, "context")
-                if p["kind"] not in CONTEXT_KINDS:
-                    raise TelemetryError(f"unsupported context kind: {p['kind']}")
-                candidate = {"event_id": event.event_id, "task_id": task_id, **p}
-                try:
-                    canonical = ac.ContextAccessEvent.from_mapping(candidate)
-                except ac.ControlError as exc:
-                    raise TelemetryError(str(exc)) from exc
-                context_events.append({
-                    "run_id": run_id, "policy_id": policy_id,
-                    **{f.name: getattr(canonical, f.name) for f in fields(ac.ContextAccessEvent)},
-                })
-            elif event.event_kind == "compression":
-                allowed = {"compression_id", "trigger_reason", "pre_context_length", "post_context_length", "retained_recent_tail", "summary_budget", "protected_messages", "provider_visible_prompt_mutation", "cache_break_observed"}
-                _exact(p, allowed, allowed, "compression")
-                q = dict(p)
-                for key in ("compression_id", "trigger_reason"):
-                    q[key] = _text(q[key], key)
-                for key in ("pre_context_length", "post_context_length", "retained_recent_tail", "summary_budget", "protected_messages"): q[key] = _int(q[key], key)
-                q["provider_visible_prompt_mutation"] = _bool(q["provider_visible_prompt_mutation"], "provider_visible_prompt_mutation")
-                if q["cache_break_observed"] not in {True, False, "unknown"}:
-                    raise TelemetryError("cache_break_observed must be true, false, or unknown")
-                compressions.append(q)
+            q = validate_event_payload(event)
+            if event.event_kind == "context":
+                context_events.append(q)
             else:
-                allowed = {"success", "task_score", "scorer_id", "scorer_version", "failure_class", "scoring_provenance", "harness_revision"}
-                required = allowed - {"failure_class"}
-                _exact(p, allowed, required, "outcome")
-                q = dict(p)
-                for key in ("scorer_id", "scorer_version", "scoring_provenance", "harness_revision"):
-                    q[key] = _text(q[key], key)
-                q["success"] = _bool(q["success"], "success")
-                q["task_score"] = _num(q["task_score"], "task_score", minimum=-math.inf)
-                if q["scoring_provenance"] not in {"human", "automatic", "benchmark"}:
-                    raise TelemetryError("invalid scoring_provenance")
-                outcomes.append(q)
+                {"request": requests, "tool": tools, "compression": compressions,
+                 "outcome": outcomes}[event.event_kind].append(q)
 
         if not requests or len(outcomes) != 1:
             raise TelemetryError(f"run {run_id} requires requests and exactly one outcome")

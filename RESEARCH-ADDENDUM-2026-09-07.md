@@ -1,5 +1,7 @@
 # Research Addendum — 2026-09-07
 
+> Runtime successor status (2026-09-07): provider adapters are fixture-tested; credential-backed evidence is BLOCKED by runtime authorization. Partial Hermes trace-replay and synthetic retention do not establish runtime-A/B or task-economic results. Production mutation remains disabled. See [REAL-RUNTIME-CAMPAIGN.md](REAL-RUNTIME-CAMPAIGN.md).
+
 > 本文件只记录 2026-08-19 原始 L0–L3 研究之后的新证据、时效变化和适用边界。  
 > **不回写历史快照。** 原文保留“当时知道了什么”，本增补记录“截至 2026-09-07 哪些地方需要更新或收窄”。
 

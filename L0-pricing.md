@@ -1,5 +1,7 @@
 # 全球主流 LLM 服务商 Prompt/Context Caching 定价与机制对比（截至 2026-08-19）
 
+> Runtime successor status (2026-09-07): provider adapters are fixture-tested; credential-backed evidence is BLOCKED by runtime authorization. Expanded Hermes component trace-replay and deterministic retention-task fixtures do not establish runtime-A/B or task-economic results. Production mutation remains disabled. See [REAL-RUNTIME-CAMPAIGN.md](REAL-RUNTIME-CAMPAIGN.md).
+
 > 所有条目均以官方文档/定价页为准，附来源 URL；个别细节未能从官方页核实的已标注「未核实」。
 >
 > 时效提醒：本表数据截至 2026-08-19，价格与 TTL 属快衰减信息，引用前请核对官方最新定价页。

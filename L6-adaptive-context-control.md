@@ -1,5 +1,7 @@
 # L6 Adaptive Context Control：Admission、Residency、Prefetch 与 Budget Control
 
+> Runtime successor status (2026-09-07): provider adapters are fixture-tested; credential-backed evidence is BLOCKED by runtime authorization. Expanded Hermes component trace-replay and deterministic retention-task fixtures do not establish runtime-A/B or task-economic results. Production mutation remains disabled. See [REAL-RUNTIME-CAMPAIGN.md](REAL-RUNTIME-CAMPAIGN.md).
+
 ## Calibration addendum — 2026-09-07
 
 `controller_calibration.py` adds offline replay calibration for the existing

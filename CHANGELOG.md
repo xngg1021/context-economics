@@ -1,5 +1,34 @@
 # Changelog
 
+## Unreleased — PR #6 final evidence closeout
+
+- Disable Git replacement refs and export the checked tree; use fixed trusted Git installation and validate event payloads before aborted telemetry retention.
+
+- Bind the entire reviewed campaign via an independently supplied digest before credential selection/delivery, refusing rehashed model/pricing substitutions.
+
+- Fix startup P1 with trusted isolated bootstrap, credential-free source/blob validation and imports, reviewed-commit pin, and post-import pipe delivery; reject dirty source and ignored forged bytecode.
+
+- Fix three independent security review P1s, including repository-location spoofing and unbounded rehashed workloads; canonical tasks/policy are revalidated before network.
+- Fix initial credential handling P1: provider secrets are removed from source-identity Git subprocesses; fsmonitor and external config are disabled.
+- Add exact Models preflight, 24-pair holdout minimum, runtime scorer-source binding and immutable preflight failures.
+- Retain partial validated request telemetry on later executor failure, classify failures and count attempted/unattempted runs explicitly.
+- Implement offline external-reference attestation verification; no provisioned roots or promotion enablement.
+- Add twelve deterministic operation tasks and a separate public lookup/reacquisition experiment.
+- Extend historical pinned Hermes component replay to head decay, assembly, summary template and reset helpers; full compressor remains pending.
+- Refresh official pricing/billing assessment without rewriting historical snapshots or claiming observed per-request bills.
+
+
+## Unreleased — Real runtime successor
+
+- Engineering support added; real evidence blocked by runtime authorization.
+- Adds two native fixture-tested provider parsers, bounded HTTPS executor, nullable native observations, frozen AB/BA campaign tooling and aborted-campaign records.
+- Adds partial exact-source Hermes method replay, twelve-type literal retention fixture, complete-cell descriptive factorial analysis and immutable manual official pricing refresh/check path.
+- No real paired campaign, observed billing, real L6 calibration or production mutation.
+
+- PR #5 engineering pipeline accepted on main `79447daafd365edb228c4864fc630f6265dc6287`; post-merge validate `34109557962` succeeded.
+- Real provider evidence pending/staged; task-economic evidence not established; production controller mutation disabled.
+
+
 ## Unreleased — PR #4 Correctness Recovery
 
 - separates additive ledger v2 from reacquisition/retry attribution with explicit legacy migration;

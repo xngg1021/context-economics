@@ -8,6 +8,13 @@ import task_economics as te
 
 
 class TaskEconomicsTests(unittest.TestCase):
+    def test_p99_preserves_tail_latency_information(self):
+        rows=[te.RunReceipt(str(i),str(i),'p',True,wall_time_ms=float(i)) for i in range(101)]
+        agg=te.aggregate(rows)
+        self.assertEqual(agg['p50_wall_time_ms'],50)
+        self.assertEqual(agg['p95_wall_time_ms'],95)
+        self.assertEqual(agg['p99_wall_time_ms'],99)
+
     def test_observed_cost_sums_components(self):
         receipt = te.RunReceipt(
             run_id="r",

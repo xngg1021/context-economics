@@ -1,5 +1,7 @@
 # Runtime instrumentation contract
 
+> Runtime successor status (2026-09-07): provider adapters are fixture-tested; credential-backed evidence is BLOCKED by runtime authorization. Expanded Hermes component trace-replay and deterministic retention-task fixtures do not establish runtime-A/B or task-economic results. Production mutation remains disabled. See [REAL-RUNTIME-CAMPAIGN.md](REAL-RUNTIME-CAMPAIGN.md).
+
 Observed at: 2026-09-07 UTC. Schema: `context_runtime.py`, version 1.
 
 The runtime pipeline is:
