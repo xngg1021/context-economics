@@ -45,7 +45,15 @@
 - 《Context Engineering for AI Agents: Lessons from Building Manus》（Yichao "Peak" Ji，2025-07-18）[官方-一手]：① KV-cache 命中率是生产 agent 唯一最重要指标——agent 输入:输出 token 约 100:1，Claude Sonnet 缓存输入 $0.30/MTok vs 未缓存 $3/MTok（10 倍差）；② 保缓存三招：稳定前缀、append-only 上下文、确定性序列化；③ 工具不删只 mask——用状态机+logit masking 约束动作空间，避免改工具定义打爆缓存和引用已删工具导致幻觉；④ 文件系统当外部记忆，128k 窗口对长任务不够，observation 可丢弃但留可恢复引用；⑤ 用复述 todo 操控注意力；⑥ 保留错误与失败轨迹供模型自我修正；⑦ 警惕 few-shot 同质化。https://manus.im/blog/Context-Engineering-for-AI-Agents-Lessons-from-Building-Manus
 - ZenML LLMOps 数据库条目 [社区总结]：四次框架重写换来的经验；logit masking+状态机细节；要点与上文一致。https://www.zenml.io/llmops-database/context-engineering-strategies-for-production-ai-agents
 
-## 5. 实测 token 消耗结构/成本构成
+## 5. Spotify Portal：模型路由与阈值拦截（2026-09 增补）
+
+- Spotify 工程博客《Portal by Spotify cut my Claude Code token usage by 90%》[官方-一手，2026-09]：一位 Spotify 工程师的 Claude Code 分流方案。观察起点："打开五个文件来回答其中一个方法的问题，大量 token 消耗但几乎零推理"。方案：经内部 Portal 平台的 AiKA Modes 挂两个 worker 模式——bulk-reader 读大文件返回结构化摘要、code-writer 按参考文件生成样板代码，示例 worker 模型为 Gemini 2.5 Flash（模型字段可换）。benchmark 为 Java monorepo 四场景，对比 Claude 直接读文件与消费摘要，bulk-read 均值省约 90% token。https://engineering.atspotify.com/2026/9/portal-by-spotify-cut-my-claude-code-token-usage-by-90
+- 阈值拦截机制 [官方]：Claude Code PreToolUse 钩子在每次 Read 前检查文件行数，超过默认 350 行（SHUNT_MIN_LINES 可配）直接阻断 Read 并重定向到 bulk-reader；定向读取（带 offset/limit）与管道命令放行。设计原则原文："Even if Claude doesn't read the skill description, the hook still blocks the expensive read"——书面规则只是建议，钩子阻断才保证执行。
+- 边界与代价 [官方]：编辑不可委托（worker 摘要无可靠行号，改代码仍需读原文段）；worker 只能抄表面模式，作者实测其错过一个细微线程安全 bug，Claude 拿到正确上下文后数秒发现；每次委托是网络往返，延迟 10-30 秒，Portal 单次调用上限 30 秒；路由明确排除调试、架构决策、安全关键代码。
+- 第三方口径分析 [社区]：90% 是前沿模型上下文节省（Claude 直接读 vs 摘要），不是总成本降低——文件仍流经 worker 模型产生费用；无准确性 benchmark。https://www.aipricing.guru/news/spotify-portal-claude-code-90-token-savings-cost-impact-september-2026
+- 与本研究的关系：任务分级路由的工程实证——I/O 型工作分流廉价模型，与 L4 写入守则、L5 单位任务成本目标同向；350 行硬阈值对应"阻塞而非建议"的设计纪律，与 THM 1.4 影子控制面的"数据不足就抑制输出"形成互补（一个管执行层强制，一个管建议层克制）。
+
+## 6. 实测 token 消耗结构/成本构成
 
 - arXiv 2601.06007《Don't Break the Cache》[实测-学术]（已知基线）：500+ 真实 agent 会话，稳定前缀+动态内容置尾，成本降 41-80%、TTFT 降 13-31%。https://arxiv.org/abs/2601.06007
 - Firecrawl《12 Ways to Cut Token Consumption in Claude Code》[实测]：每个 MCP server 会话开局注入 1-2 万 token schema，多 server 静默加 5-7 万 token 且逐轮随行；`.claudeignore` 纪律实测降上下文 85.5%；引 MindStudio benchmark：五阶段结构化流程比非结构化会话省 14% token、9% 成本。https://www.firecrawl.dev/blog/claude-code-token-efficiency
