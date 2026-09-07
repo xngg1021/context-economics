@@ -1,0 +1,39 @@
+name: L6 documentation one-shot
+on:
+  push:
+    branches:
+      - chat/context-l6-adaptive-control-20260907
+permissions:
+  contents: write
+jobs:
+  sync:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Generate current L6 documentation
+        run: python update_l6_docs.py
+      - name: Validate generated tree
+        run: |
+          python -m unittest discover -s tests -v
+          python model.py
+          python real_model.py --fixture fixtures/sample_sessions.json
+          python task_economics.py --receipts fixtures/run_receipts.json --control no-compression --treatment aggressive-compression
+          python adaptive_control.py telemetry --events fixtures/context_access_events.json
+          python adaptive_control.py residency --events fixtures/context_access_events.json --catalog fixtures/context_assets.json --budget 14 --min-demand-tasks 4 --min-asset-demands 2
+          python adaptive_control.py prefetch --events fixtures/context_access_events.json --catalog fixtures/context_assets.json --seed repo-map --budget 4 --min-seed-demands 3 --min-joint-tasks 2
+          python adaptive_control.py budget --state fixtures/context_budget_state.json
+          git diff --check
+      - name: Commit generated docs and CI
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add README.md CHANGELOG.md PROVENANCE.md L5-task-economics.md tests/test_docs.py .github/workflows/validate.yml
+          git commit -m 'docs: wire L6 control plane into current repository surface'
+          git push origin HEAD:chat/context-l6-adaptive-control-20260907
