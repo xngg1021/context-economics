@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "note": "Synthetic experiment contract fixture; declared evidence is not runtime evidence.",
+  "manifest": {
+    "experiment_id": "synthetic-l5-l6-join-v1",
+    "declared_evidence_class": "synthetic-contract",
+    "assignment_method": "paired-fixed",
+    "control_policy": "baseline-context",
+    "treatment_policy": "adaptive-shadow",
+    "provider": "synthetic-provider",
+    "model": "synthetic-model",
+    "model_revision": "synthetic-model-rev-1",
+    "harness_revision": "synthetic-harness-rev-1",
+    "repository_commit": "029b375a21ad81f8d062cf33e37348a82f34b4eb",
+    "runtime_environment_ref": "ci-synthetic-runtime-contract:v1",
+    "task_set_ref": "fixtures/runtime-contract-tasks:v1",
+    "pricing_snapshot_ref": "pricing-snapshot.json@4f2eaa8a67bf36277beee4bb3e0d15d6775efaf2",
+    "policy_bundle_ref": "synthetic-context-policies:v1",
+    "expected_task_ids": ["task-a", "task-b"]
+  }
+}

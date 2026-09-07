@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "note": "Synthetic run-linked context telemetry for experiment contract CI; not runtime evidence.",
+  "events": [
+    {"run_id":"c-a","policy_id":"baseline-context","event_id":"c-a:repo","task_id":"task-a","kind":"context_hit","asset_id":"repo-map"},
+    {"run_id":"c-a","policy_id":"baseline-context","event_id":"c-a:file","task_id":"task-a","kind":"soft_miss","asset_id":"target-file","avoidable":true,"extra_cost_units":5,"extra_tokens":300,"extra_tool_calls":1,"extra_latency_ms":30},
+    {"run_id":"c-b","policy_id":"baseline-context","event_id":"c-b:repo","task_id":"task-b","kind":"context_hit","asset_id":"repo-map"},
+    {"run_id":"c-b","policy_id":"baseline-context","event_id":"c-b:test","task_id":"task-b","kind":"hard_miss","asset_id":"target-tests","avoidable":true,"extra_cost_units":8,"extra_tokens":500,"extra_tool_calls":2,"extra_latency_ms":70},
+    {"run_id":"t-a","policy_id":"adaptive-shadow","event_id":"t-a:repo","task_id":"task-a","kind":"context_hit","asset_id":"repo-map"},
+    {"run_id":"t-a","policy_id":"adaptive-shadow","event_id":"t-a:file","task_id":"task-a","kind":"context_hit","asset_id":"target-file"},
+    {"run_id":"t-a","policy_id":"adaptive-shadow","event_id":"t-a:prefetch","task_id":"task-a","kind":"prefetch","asset_id":"target-tests","used":true,"avoided_miss":true,"avoided_cost_units":4,"prefetched_units":2,"extra_cost_units":0.2},
+    {"run_id":"t-b","policy_id":"adaptive-shadow","event_id":"t-b:repo","task_id":"task-b","kind":"context_hit","asset_id":"repo-map"},
+    {"run_id":"t-b","policy_id":"adaptive-shadow","event_id":"t-b:test","task_id":"task-b","kind":"soft_miss","asset_id":"target-tests","avoidable":true,"extra_cost_units":3,"extra_tokens":180,"extra_tool_calls":1,"extra_latency_ms":20}
+  ]
+}
