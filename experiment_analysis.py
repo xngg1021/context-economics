@@ -157,7 +157,7 @@ def acceptance_gate(receipts: Sequence[te.RunReceipt], context_by_policy: Mappin
         "paired_coverage": coverage is not None and coverage >= config.min_paired_coverage,
         "manifest_valid": False,
         "scorer_provenance": bool(paired) and all(r.scorer_id and r.scorer_version and r.scoring_provenance in {"human", "automatic", "benchmark"} and r.task_score is not None for r in paired),
-        "billing_provenance": bool(paired) and all(r.provider_bill_source and (r.billing_status == "observed" or (allow_estimated and r.billing_status == "estimated")) and r.cost_ledger_version == 2 for r in paired),
+        "billing_provenance": bool(paired) and all(r.provider_bill_source and (r.billing_status == "observed" or (target == "runtime-A/B" and allow_estimated and r.billing_status == "estimated")) and r.cost_ledger_version == 2 for r in paired),
         "evidence_class": False,
         "real_execution": evidence_origin == "real-provider",
         "held_out_tasks": False,

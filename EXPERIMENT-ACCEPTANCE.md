@@ -48,7 +48,7 @@ package has no such verifier, so evidence_eligible and candidate_for_promotion
 remain false even when every caller declaration looks valid. A future trusted
 control plane must authenticate evidence outside the executor/caller boundary;
 there is no caller boolean that enables formal promotion. Default billing must be observed;
-only explicit `allow_estimated=True` admits estimates (reported in output).
+only explicit `allow_estimated=True` with target `runtime-A/B` admits estimates (reported in output). Target `task-economic` always requires observed billing, even when the estimate flag is supplied.
 Synthetic/loopback evidence remains shadow-only. Eligibility is structural
 validation of supplied provenance, not authentication of the caller's claims or
 proof of statistical superiority. No production mutation is performed.

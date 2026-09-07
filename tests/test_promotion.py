@@ -35,7 +35,8 @@ class PromotionTests(unittest.TestCase):
     def test_structural_observed_and_estimated_paths(self):
         rows,kw=self.evidence();self.assertTrue(self.gate(rows,**kw)['evidence_structurally_eligible'])
         rows,kw=self.evidence('estimated');self.assertFalse(self.gate(rows,**kw)['evidence_eligible'])
-        self.assertTrue(self.gate(rows,allow_estimated=True,**kw)['evidence_structurally_eligible'])
+        self.assertTrue(self.gate(rows,allow_estimated=True,target='runtime-A/B',**kw)['evidence_structurally_eligible'])
+        self.assertFalse(self.gate(rows,allow_estimated=True,target='task-economic',**kw)['evidence_structurally_eligible'])
     def test_synthetic_loopback_missing_scorer_and_pin_mismatch(self):
         rows,kw=self.evidence(evidence='synthetic-contract')
         self.assertFalse(self.gate(rows,**kw)['evidence_eligible'])
