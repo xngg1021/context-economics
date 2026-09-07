@@ -87,6 +87,67 @@ class DocumentationContractTests(unittest.TestCase):
             text = (ROOT / "fixtures" / name).read_text(encoding="utf-8")
             self.assertIn("Synthetic", text)
 
+    def test_productized_localized_homepages_are_complete_and_current(self):
+        version = (ROOT / "VERSION").read_text(encoding="utf-8").strip()
+        self.assertEqual(version, "0.6.1")
+        names = (
+            "README.md",
+            "README.zh-CN.md",
+            "README.zh-TW.md",
+            "README.ja.md",
+            "README.ko.md",
+            "README.de.md",
+            "README.fr.md",
+            "README.es.md",
+        )
+        language_links = (
+            "README.md",
+            "README.zh-CN.md",
+            "README.zh-TW.md",
+            "README.ja.md",
+            "README.ko.md",
+            "README.de.md",
+            "README.fr.md",
+            "README.es.md",
+        )
+        transient_release_phrases = (
+            "remain subject to the same repository CI before acceptance",
+            "同样必须通过仓库 CI 后才能接受",
+            "同樣必須通過倉庫 CI 才能接受",
+            "同じ CI を通過してから受理します",
+            "동일한 CI를 통과한 뒤 수용합니다",
+            "muss denselben CI-Gates genügen",
+            "doit passer les mêmes gates CI",
+            "debe superar los mismos gates CI",
+        )
+        for name in names:
+            text = (ROOT / name).read_text(encoding="utf-8")
+            self.assertGreater(len(text), 6000, name)
+            self.assertIn("0.6.1", text, name)
+            self.assertIn("L0", text, name)
+            self.assertIn("L6 Adaptive Context Control", text, name)
+            self.assertIn("cost_per_success", text, name)
+            self.assertIn("CHANGELOG.md", text, name)
+            self.assertIn("VERSIONING.md", text, name)
+            self.assertIn("FINAL-EVIDENCE-BOUNDARY.md", text, name)
+            for link in language_links:
+                self.assertIn(link, text, f"{name} missing {link}")
+            for phrase in transient_release_phrases:
+                self.assertNotIn(phrase, text, f"{name} contains transient release chronology")
+
+    def test_current_evidence_boundary_is_post_merge(self):
+        text = (ROOT / "FINAL-EVIDENCE-BOUNDARY.md").read_text(encoding="utf-8")
+        self.assertIn("2aef1e7043273637adff1453d22dafc83d5e0e94", text)
+        self.assertIn("34142898117", text)
+        self.assertNotIn("No merge claimed", text)
+        self.assertNotIn("must be checked in PR #6 before merge", text)
+
+    def test_changelog_uses_versioned_release_sections(self):
+        changelog = (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
+        for version in ("0.6.1", "0.6.0", "0.5.0", "0.4.0", "0.3.0", "0.2.0", "0.1.0"):
+            self.assertIn(f"## {version}", changelog)
+        self.assertNotIn("## Unreleased —", changelog)
+        self.assertTrue((ROOT / "VERSIONING.md").is_file())
 
 
 if __name__ == "__main__":
