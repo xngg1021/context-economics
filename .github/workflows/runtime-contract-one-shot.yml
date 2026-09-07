@@ -1,0 +1,38 @@
+name: Runtime contract closeout one-shot
+on:
+  push:
+    branches:
+      - chat/context-runtime-experiment-contract-20260907
+permissions:
+  contents: write
+jobs:
+  closeout:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Apply runtime-contract closeout patch
+        run: python finish_runtime_contract.py
+      - name: Validate generated tree
+        run: |
+          python -m unittest discover -s tests -v
+          python model.py
+          python real_model.py --fixture fixtures/sample_sessions.json
+          python task_economics.py --receipts fixtures/run_receipts.json --control no-compression --treatment aggressive-compression
+          python adaptive_control.py telemetry --events fixtures/context_access_events.json
+          python adaptive_control.py budget --state fixtures/context_budget_state.json
+          python runtime_experiment.py --manifest fixtures/runtime_experiment_manifest.json --receipts fixtures/runtime_ab_receipts.json --events fixtures/runtime_context_events.json --require-complete
+          git diff --check
+      - name: Commit runtime-contract closeout
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add runtime_experiment.py tests/test_runtime_experiment.py fixtures/runtime_ab_receipts.json RUNTIME-EXPERIMENT-CONTRACT.md README.md L6-adaptive-context-control.md PROVENANCE.md CHANGELOG.md tests/test_docs.py
+          git commit -m 'docs: close runtime experiment contract surface'
+          git push origin HEAD:chat/context-runtime-experiment-contract-20260907
