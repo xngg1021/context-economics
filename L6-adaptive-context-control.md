@@ -1,5 +1,18 @@
 # L6 Adaptive Context Control：Admission、Residency、Prefetch 与 Budget Control
 
+## Calibration addendum — 2026-09-07
+
+`controller_calibration.py` adds offline replay calibration for the existing
+shadow vector controller. A parameter grid is selected only on `train` task IDs
+and evaluated on disjoint `holdout` task IDs; overlap fails and small samples
+return `insufficient evidence`. The replay objective measures distance to a
+caller-supplied target budget, so even a low holdout loss is not evidence that
+the target improves task success or cost. There is no auto-enable path.
+
+ARC and TinyLFU remain systems analogies: ARC is an online adaptive replacement
+algorithm, not ML training; TinyLFU's transferable principle is that admission
+and replacement are separate decisions. Neither paper establishes an LLM law.
+
 > 新增：2026-09-07  
 > 当前实现：`adaptive_control.py`，标准库、deterministic、**shadow/advisory only**。  
 > 本层把 L0–L5 的价格、缓存、压缩、harness、持久状态与 task economics 变成可观测的控制问题，但不在缺少真实 runtime/task A/B 时自动修改生产策略。

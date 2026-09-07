@@ -83,3 +83,15 @@ jobs:
           --receipts fixtures/runtime_ab_receipts.json
           --events fixtures/runtime_context_events.json
           --require-complete
+      - name: Runtime instrumentation and local HTTP adapter E2E
+        run: python -m unittest tests.test_context_runtime tests.test_runtime_http -v
+      - name: Paired statistics and acceptance-gate tests
+        run: python -m unittest tests.test_experiment_analysis -v
+      - name: Shadow-controller calibration tests
+        run: python -m unittest tests.test_controller_calibration -v
+      - name: Experiment analysis CLI smoke test
+        run: >-
+          python experiment_analysis.py
+          --receipts fixtures/run_receipts.json
+          --control no-compression
+          --treatment aggressive-compression

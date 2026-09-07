@@ -1,5 +1,19 @@
 # Changelog
 
+## Unreleased — Runtime Evidence & Adaptive Calibration
+
+- adds a strict versioned request/tool/context/compression/outcome event schema,
+  redacting collector, run normalizer, and L5/L6 projections;
+- distinguishes observed and estimated provider billing and keeps cache-routing
+  hints separate from observed cache behavior;
+- adds a provider-agnostic adapter protocol plus deterministic loopback HTTP E2E;
+- adds counterbalanced AB/BA schedules, paired distribution statistics,
+  deterministic bootstrap intervals, and configurable promotion-candidate gates;
+- adds offline L6 parameter sweep with disjoint train/holdout tasks and explicit
+  insufficient-evidence behavior;
+- expands the public matrix from 57 to 72 tests. No real provider A/B or observed
+  provider billing is claimed.
+
 ## Unreleased — Version-Pinned Runtime Experiment Contract
 
 - adds `runtime_experiment.py` to join L5 task-economics receipts with L6 context telemetry by exact run/task/policy identity;

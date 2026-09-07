@@ -1,5 +1,17 @@
 # L5 Task Economics & Observability：从“省 token”到“单位成功任务成本”
 
+## Runtime receipt addendum — 2026-09-07
+
+`context_runtime.py` now derives L5 receipts from request-, tool-, compression-,
+and outcome-level events. Each provider bill carries a source and an explicit
+`observed` or `estimated` status; scorer identity/version and human/automatic/
+benchmark provenance are preserved. Token totals, request order, timestamps,
+IDs, and run/task/policy isolation fail closed. See `RUNTIME-INSTRUMENTATION.md`.
+
+`experiment_analysis.py` reports paired distributions rather than only mean
+deltas and evaluates cost per success jointly with quality, reacquisition,
+latency, pollution, and staleness gates. These gates nominate a candidate only.
+
 > 新增：2026-09-07  
 > 本层是 Context Economics 的闭环层。L0–L4 描述价格、KV、压缩、harness 和 memory；L5 回答最终问题：**一个 context policy 是否真的让任务更便宜、更快、更可靠。**
 
