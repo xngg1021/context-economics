@@ -288,7 +288,7 @@ def normalize(events: Sequence[Envelope]) -> dict[str, object]:
                 if q["cached_input_tokens"] + q["uncached_input_tokens"] != q["input_tokens"]:
                     raise TelemetryError("cached + uncached input tokens must equal input_tokens")
                 for key in ("provider_bill_usd", "ttft_ms", "request_wall_time_ms"):
-                    q[key] = _num(q[key], key)
+                    q[key] = None if key == "ttft_ms" and q[key] is None else _num(q[key], key)
                 q["compression_triggered"] = _bool(q["compression_triggered"], "compression_triggered")
                 q["request_start"] = _time(q["request_start"], "request_start")
                 q["request_end"] = _time(q["request_end"], "request_end")

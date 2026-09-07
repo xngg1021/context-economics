@@ -37,3 +37,35 @@ class HTTPE2E(unittest.TestCase):
 
 
 if __name__ == "__main__": unittest.main()
+
+class StandardHTTPTests(unittest.TestCase):
+    def call(self, payload, estimator=None):
+        from unittest.mock import patch, MagicMock
+        response=MagicMock();response.__enter__.return_value.read.return_value=json.dumps(payload).encode()
+        with patch('urllib.request.urlopen',return_value=response):
+            return runtime_http.run_request(url='http://localhost',run_id='r',task_id='t',policy_id='p',model='m',model_revision='v1',sequence_index=0,input_text='PRIVATE',pricing_estimator=estimator)
+    def standard(self):
+        return {'id':'r','model':'m','object':'chat.completion','created':1,
+                'usage':{'prompt_tokens':10,'completion_tokens':2,'prompt_tokens_details':{'cached_tokens':4}},
+                'choices':[{'message':{'role':'assistant','content':'4'}}],
+                'headers':{'authorization':'SECRET'}}
+    def test_standard_estimator_cache_redaction_and_unknown_ttft(self):
+        seen=[]
+        def estimate(usage):
+            seen.append(usage);return {'amount_usd':.2,'source':'snapshot@v1','status':'observed'}
+        event,answer=self.call(self.standard(),estimate)
+        p=event['payload']
+        self.assertEqual(answer,'4');self.assertEqual(p['billing_status'],'estimated')
+        self.assertEqual(p['cached_input_tokens'],4);self.assertIsNone(p['ttft_ms'])
+        self.assertGreaterEqual(p['request_wall_time_ms'],0)
+        self.assertFalse(p['provider_metadata']['cache_write_usage_available'])
+        self.assertEqual(seen[0]['input_tokens'],10)
+        self.assertNotIn('SECRET',str(event));self.assertNotIn('PRIVATE',str(event))
+    def test_no_billing_no_estimator(self):
+        with self.assertRaisesRegex(rt.TelemetryError,'pricing_estimator'):self.call(self.standard())
+    def test_malformed_usage(self):
+        for value in (True,'10',-1,None,11.1):
+            payload=self.standard();payload['usage']['prompt_tokens']=value
+            with self.assertRaises(rt.TelemetryError):self.call(payload)
+        payload=self.standard();payload['usage']['prompt_tokens_details']['cached_tokens']=11
+        with self.assertRaises(rt.TelemetryError):self.call(payload)

@@ -60,3 +60,15 @@ Tool categories are retrieval/filesystem/search/database/web/compute/action/othe
 `is_retrieval` controls accounting independently of category. For old envelopes,
 reacquisition automatically implies retrieval; explicitly setting it false for
 reacquisition fails. All normalized L5 receipts are reparsed before returning.
+
+HTTP support is non-streaming text chat-completions (`message.content`) plus
+legacy `choices[0].text`; one choice and prompt/completion usage are required.
+Standard extra response fields are ignored, never copied into telemetry. Cached
+usage accepts prompt_tokens_details.cached_tokens or cached_prompt_tokens;
+conflicts fail. Missing cache-write usage is marked unavailable in metadata,
+with zero as the additive token projection only. Without endpoint billing a
+caller-supplied estimator must return amount_usd and a pinned source reference;
+its result is always labeled estimated. Missing both fails actionably.
+Non-streaming TTFT is unknown/null. request_wall_time_ms measures full body
+receipt; it is not first-token latency. Streaming and tool-call answers are
+outside this minimal adapter's support.
