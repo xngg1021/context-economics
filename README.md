@@ -445,3 +445,5 @@ tests/test_docs.py
 五种 provider 环境密钥均不存在，真实请求与配对任务均为 0；费用、真实成功率和性能指标均 unavailable。Fixture 结果不能升级为真实证据。独立信任根为空，L6 保持 shadow，production mutation=false。当前验收及全部缺口见 [FINAL-EVIDENCE-BOUNDARY.md](FINAL-EVIDENCE-BOUNDARY.md)。
 
 真实调用必须通过受信任副本的 `trusted_runtime_bootstrap.py`（`python -I -S`，显式指定独立核实的 `--expected-commit` 和 `--expected-campaign-digest`）。它先无密钥校验并提取 Git blob，在隔离子进程完成导入后才通过管道交付所选密钥；普通 CLI 拒绝直接带密钥启动。参见上述实验合同的完整命令。
+
+可信运行目前要求 POSIX 系统的 `/usr/bin/git`；Windows 或缺少该固定安装路径时拒绝启动。失败遥测也先经过与 normalizer 相同的单事件字段校验。

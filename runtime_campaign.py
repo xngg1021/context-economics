@@ -66,8 +66,10 @@ def identity():
         environment['SystemRoot'] = os.environ['SystemRoot']
     environment.update(GIT_CONFIG_NOSYSTEM='1', GIT_CONFIG_GLOBAL=os.devnull,
                        GIT_OPTIONAL_LOCKS='0')
-    executable = shutil.which('git', path=os.defpath)
-    if not executable:
+    # Fixed trusted POSIX installation; never search PATH/current directory.
+    # Other platforms fail closed until a trusted deployment path is implemented.
+    executable = '/usr/bin/git' if os.name == 'posix' else None
+    if not executable or not Path(executable).is_file():
         raise ValueError('trusted Git executable unavailable')
     def git(*args):return subprocess.check_output(
         [executable,'-c','core.fsmonitor=false','-c','core.untrackedCache=false',*args],

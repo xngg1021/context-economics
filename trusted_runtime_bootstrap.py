@@ -72,8 +72,10 @@ def launch(source, campaign_path, output_root, expected_commit, expected_campaig
                    'GIT_CONFIG_GLOBAL':os.devnull, 'GIT_OPTIONAL_LOCKS':'0'}
     if os.name=='nt' and 'SystemRoot' in os.environ:
         environment['SystemRoot'] = os.environ['SystemRoot']
-    git = shutil.which('git',path=os.defpath)
-    if not git:
+    # Fixed trusted POSIX installation; never search PATH/current directory.
+    # Other platforms fail closed until a trusted deployment path is implemented.
+    git = '/usr/bin/git' if os.name == 'posix' else None
+    if not git or not Path(git).is_file():
         raise ValueError('trusted_git_unavailable')
     def read(*args):
         return subprocess.check_output([git,'-c','core.fsmonitor=false',

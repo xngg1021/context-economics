@@ -43,7 +43,7 @@ reviewed commit and installed launcher/Python are explicit trust prerequisites.
 New review requests target successor code; a request is not a
 clean security result. CI 34132270992 passed entry HEAD; 34137446215 passed
 successor de160a4, both Python 3.11/3.13. All 18 local workflow validation commands
-passed after the finalization fix; suite now contains 143 tests. Final exact-head
+passed after the finalization fix; suite now contains 145 tests. Final exact-head
 review/CI and unresolved-thread status must be checked in PR #6 before merge.
 Independent security completion remains a hard merge gate. No merge claimed.
 
@@ -203,3 +203,5 @@ estimated bills, including with `allow_estimated=True`.
    the first real provider campaign.
 
 No automatic production change or THM write is authorized by a good experiment.
+
+Final review follow-up: Git execution now requires the fixed trusted POSIX installation `/usr/bin/git`; Windows and installations without that path fail closed. No PATH, current-directory or os.defpath executable search remains. Event payload validation is shared by collection and normalization, so malformed/private fields are rejected before entering retained telemetry, including aborted campaigns; prior valid receipts survive. Two regressions cover poisoned executable search and invalid partial payload persistence.

@@ -102,3 +102,14 @@ class BootstrapTests(unittest.TestCase):
         result=self.launch()
         self.assertEqual(result.returncode,2)
         self.assertNotIn('FIXTURE-PRIVATE',result.stdout+result.stderr)
+
+    def test_checkout_git_and_path_override_are_never_executed(self):
+        fake=self.source/'git'
+        fake.write_text('#!/bin/sh\ntouch '+str(self.marker)+'\nexit 0\n')
+        fake.chmod(0o755)
+        (self.source/'.git/info/exclude').write_text('git\ngit.exe\n')
+        (self.source/'git.exe').write_bytes(fake.read_bytes())
+        self.environment['PATH']=str(self.source)
+        result=self.launch()
+        self.assertEqual(result.returncode,0,result.stdout+result.stderr)
+        self.assertFalse(self.marker.exists())
