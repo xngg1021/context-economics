@@ -1,5 +1,7 @@
 # Version-Pinned Runtime Experiment Contract
 
+> Runtime successor status (2026-09-07): provider adapters are fixture-tested; credential-backed evidence is BLOCKED by runtime authorization. Partial Hermes trace-replay and synthetic retention do not establish runtime-A/B or task-economic results. Production mutation remains disabled. See [REAL-RUNTIME-CAMPAIGN.md](REAL-RUNTIME-CAMPAIGN.md).
+
 The upstream raw-to-normalized contract is executable in `context_runtime.py`;
 paired analysis and promotion-candidate gates are in `experiment_analysis.py`.
 The local HTTP E2E uses an estimated fixture bill and therefore does not upgrade

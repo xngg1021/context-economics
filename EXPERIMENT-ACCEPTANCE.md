@@ -1,5 +1,7 @@
 # Experiment analysis and acceptance
 
+> Runtime successor status (2026-09-07): provider adapters are fixture-tested; credential-backed evidence is BLOCKED by runtime authorization. Partial Hermes trace-replay and synthetic retention do not establish runtime-A/B or task-economic results. Production mutation remains disabled. See [REAL-RUNTIME-CAMPAIGN.md](REAL-RUNTIME-CAMPAIGN.md).
+
 `experiment_analysis.py` creates deterministic AB/BA schedules, reports paired
 mean, median, p50, p95, range and win/loss/tie counts, and supplies a fixed-seed
 paired bootstrap mean interval. Fewer than 20 pairs is labeled

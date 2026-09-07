@@ -1,5 +1,7 @@
 # L4 记忆、档案与持久状态的上下文经济学
 
+> Runtime successor status (2026-09-07): provider adapters are fixture-tested; credential-backed evidence is BLOCKED by runtime authorization. Partial Hermes trace-replay and synthetic retention do not establish runtime-A/B or task-economic results. Production mutation remains disabled. See [REAL-RUNTIME-CAMPAIGN.md](REAL-RUNTIME-CAMPAIGN.md).
+
 > 原始研究：2026-08-19 · SJF × Hermes  
 > correctness hardening：2026-09-07  
 > 本层连接 THM 的常驻/按需记忆问题与 Context Economics 的 provider/harness 成本模型。

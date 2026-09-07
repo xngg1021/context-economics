@@ -1,5 +1,7 @@
 # Agent Harness 上下文工程与成本优化调研（2026-08-19）
 
+> Runtime successor status (2026-09-07): provider adapters are fixture-tested; credential-backed evidence is BLOCKED by runtime authorization. Partial Hermes trace-replay and synthetic retention do not establish runtime-A/B or task-economic results. Production mutation remains disabled. See [REAL-RUNTIME-CAMPAIGN.md](REAL-RUNTIME-CAMPAIGN.md).
+
 标注：[官方] 官方文档/博文；[逆向] 社区逆向分析；[实测] 实测数据；[社区] 社区讨论/第三方总结。已知基线（无需重复核实）：arXiv 2601.06007《Don't Break the Cache》（500+ 会话实测：稳定前缀+动态内容置尾，成本降 41-80%、TTFT 降 13-31%）；MemGPT arXiv 2310.08560。
 
 ## 1. Claude Code 的上下文压缩机制

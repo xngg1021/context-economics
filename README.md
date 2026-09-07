@@ -69,6 +69,10 @@ python runtime_experiment.py --manifest artifacts/local-e2e/manifest.json --rece
 
 PR #5 engineering pipeline 已验收：main `79447daafd365edb228c4864fc630f6265dc6287`，post-merge validate `34109557962` 成功。真实 provider evidence pending/staged；task-economic evidence 尚未建立；production controller mutation disabled。
 
+## 真实 runtime 续工状态
+
+`provider_runtime.py` 已提供 OpenAI / Anthropic native adapter，`runtime_campaign.py` 可冻结并执行分阶段 AB/BA。当前只通过 fixture 验证；无可用 provider credential，真实 smoke、held-out A/B、observed-bill task-economic 均未建立。Hermes 仅完成局部原函数结构重放。生产 controller 仍禁用。运行方法、缺失计量语义和逐阶段边界见 [REAL-RUNTIME-CAMPAIGN.md](REAL-RUNTIME-CAMPAIGN.md)。
+
 ## 3. 核心成本模型
 
 在最简单的固定价、固定 cache-hit share `rho` 条件下，第 `k` 轮：
@@ -384,6 +388,12 @@ runtime_http.py
 experiment_analysis.py
 experiment_runner.py
 controller_calibration.py
+provider_runtime.py
+runtime_campaign.py
+research_evaluations.py
+hermes_structural_replay.py
+pricing_refresh.py
+REAL-RUNTIME-CAMPAIGN.md
 
 fixtures/sample_sessions.json
 fixtures/run_receipts.json

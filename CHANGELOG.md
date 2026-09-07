@@ -2,6 +2,11 @@
 
 ## Unreleased — Real runtime successor
 
+- Engineering support added; real evidence blocked by runtime authorization.
+- Adds two native fixture-tested provider parsers, bounded HTTPS executor, nullable native observations, frozen AB/BA campaign tooling and aborted-campaign records.
+- Adds partial exact-source Hermes method replay, twelve-type literal retention fixture, complete-cell descriptive factorial analysis and immutable manual official pricing refresh/check path.
+- No real paired campaign, observed billing, real L6 calibration or production mutation.
+
 - PR #5 engineering pipeline accepted on main `79447daafd365edb228c4864fc630f6265dc6287`; post-merge validate `34109557962` succeeded.
 - Real provider evidence pending/staged; task-economic evidence not established; production controller mutation disabled.
 
