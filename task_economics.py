@@ -98,6 +98,8 @@ class RunReceipt:
     output_tokens: int = 0
 
     provider_bill_usd: float = 0.0
+    provider_bill_source: str | None = None
+    billing_status: str | None = None
     tool_cost_usd: float = 0.0
     reacquisition_cost_usd: float = 0.0
     retry_cost_usd: float = 0.0
@@ -113,6 +115,9 @@ class RunReceipt:
     ttft_ms: float | None = None
     wall_time_ms: float = 0.0
     failure_class: str | None = None
+    scorer_id: str | None = None
+    scorer_version: str | None = None
+    scoring_provenance: str | None = None
     notes: tuple[str, ...] = ()
 
     @property
@@ -149,8 +154,22 @@ class RunReceipt:
             "started_at",
             "ended_at",
             "failure_class",
+            "provider_bill_source",
+            "billing_status",
+            "scorer_id",
+            "scorer_version",
+            "scoring_provenance",
         ):
             strings[name] = _text(row.get(name), name, allow_none=True)
+
+        if strings["billing_status"] not in {None, "observed", "estimated"}:
+            raise ReceiptError("billing_status must be observed or estimated")
+        if strings["scoring_provenance"] not in {
+            None, "human", "automatic", "benchmark",
+        }:
+            raise ReceiptError(
+                "scoring_provenance must be human, automatic, or benchmark"
+            )
 
         task_score = _number(
             row.get("task_score"),
