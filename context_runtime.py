@@ -17,6 +17,7 @@ from pathlib import Path
 from typing import Any, Iterable, Mapping, Protocol, Sequence
 
 import adaptive_control as ac
+import task_economics as te
 
 
 SCHEMA_VERSION = 1
@@ -26,9 +27,24 @@ CONTEXT_KINDS = {
     "planned_retrieval", "prefetch",
 }
 SECRET_KEYS = {
-    "api_key", "authorization", "authorization_header", "cookie",
-    "account_id", "raw_prompt", "raw_completion", "prompt", "completion",
+    "apikey", "xapikey", "authorization", "authorizationheader", "cookie",
+    "setcookie", "accesstoken", "refreshtoken", "accountid", "rawprompt",
+    "rawcompletion", "prompt", "completion",
+    "proxyauthorization", "password", "passwd", "pwd", "clientsecret",
+    "sessiontoken", "sessionid", "idtoken", "token", "secret", "credential",
+    "authtoken", "apitoken", "bearertoken", "oauthtoken",
+    "credentials", "privatekey", "secretkey", "accesskey", "accesskeyid",
+    "secretaccesskey", "awsaccesskeyid", "awssecretaccesskey", "awssecuritytoken",
 }
+SAFE_PROVIDER_METADATA_KEYS = {
+    "route", "region", "responseid", "servicetier", "cachehint", "type",
+    "cachewriteusageavailable",
+}
+MAX_METADATA_DEPTH = 16
+MAX_METADATA_BYTES = 65536
+MAX_METADATA_NODES = 4096
+TOOL_CATEGORIES = {"retrieval", "filesystem", "search", "database", "web", "compute", "action", "other"}
+
 
 
 class TelemetryError(ValueError):
@@ -80,14 +96,40 @@ def _time(value: object, name: str) -> str:
 def _mapping(value: object, name: str) -> dict[str, object]:
     if not isinstance(value, Mapping):
         raise TelemetryError(f"{name} must be an object")
-    out = dict(value)
-    for key, item in out.items():
-        if not isinstance(key, str):
-            raise TelemetryError(f"{name} keys must be strings")
-        if key.lower() in SECRET_KEYS:
-            raise TelemetryError(f"{name} contains forbidden private field: {key}")
-        if isinstance(item, float) and not math.isfinite(item):
-            raise TelemetryError(f"{name}.{key} must be finite")
+    nodes = 0
+    def visit(item, depth=0, provider_metadata=False):
+        nonlocal nodes
+        nodes += 1
+        if depth > MAX_METADATA_DEPTH or nodes > MAX_METADATA_NODES:
+            raise TelemetryError("metadata exceeds depth/node limit")
+        if isinstance(item, Mapping):
+            out = {}
+            for key, child in item.items():
+                if not isinstance(key, str):
+                    raise TelemetryError("metadata keys must be strings")
+                normalized_key = key.lower().replace("-", "").replace("_", "")
+                if normalized_key in SECRET_KEYS:
+                    raise TelemetryError("metadata contains forbidden private field")
+                if provider_metadata and normalized_key not in SAFE_PROVIDER_METADATA_KEYS:
+                    raise TelemetryError("provider metadata key is not allowlisted")
+                out[key] = visit(child, depth+1, provider_metadata or normalized_key == "providermetadata")
+            return out
+        if isinstance(item, (list, tuple)):
+            return [visit(child, depth+1, provider_metadata) for child in item]
+        if isinstance(item, str) and len(item) > MAX_METADATA_BYTES:
+            raise TelemetryError("metadata exceeds size limit")
+        if item is None or type(item) in (str, bool, int):
+            return item
+        if type(item) is float and math.isfinite(item):
+            return item
+        raise TelemetryError("metadata must contain finite JSON-safe values")
+    out = visit(value, provider_metadata=name == "provider_metadata")
+    try:
+        size = len(json.dumps(out, allow_nan=False).encode("utf-8"))
+    except (ValueError, UnicodeError) as exc:
+        raise TelemetryError("metadata is not JSON-safe") from exc
+    if size > MAX_METADATA_BYTES:
+        raise TelemetryError("metadata exceeds size limit")
     return out
 
 
@@ -170,7 +212,7 @@ class Collector:
                     "event_id": e.event_id, "event_kind": e.event_kind,
                     "run_id": e.run_id, "task_id": e.task_id,
                     "policy_id": e.policy_id, "occurred_at": e.occurred_at,
-                    "payload": e.payload,
+                    "payload": _mapping(e.payload, "payload"),
                 }
                 for e in self._events
             ],
@@ -208,6 +250,9 @@ def normalize(events: Sequence[Envelope]) -> dict[str, object]:
     """Normalize a multi-run event stream into L5 receipts and L6 events."""
     if not events:
         raise TelemetryError("at least one event is required")
+    events = [Envelope.parse({f.name: getattr(e, f.name) for f in fields(Envelope)}) for e in events]
+    if len({e.event_id for e in events}) != len(events):
+        raise TelemetryError("event IDs must be globally unique")
     groups: dict[str, list[Envelope]] = {}
     identity: dict[str, tuple[str, str]] = {}
     for event in events:
@@ -226,6 +271,11 @@ def normalize(events: Sequence[Envelope]) -> dict[str, object]:
         compressions: list[dict[str, object]] = []
         outcomes: list[dict[str, object]] = []
         task_id, policy_id = identity[run_id]
+        occurred = [_time_dt(e.occurred_at) for e in rows]
+        if occurred != sorted(occurred):
+            raise TelemetryError("run event timestamps must be ordered")
+        if rows[-1].event_kind != "outcome":
+            raise TelemetryError("outcome must be the last event in a run")
         for event in rows:
             p = event.payload
             if event.event_kind == "request":
@@ -257,10 +307,12 @@ def normalize(events: Sequence[Envelope]) -> dict[str, object]:
                 if q["cached_input_tokens"] + q["uncached_input_tokens"] != q["input_tokens"]:
                     raise TelemetryError("cached + uncached input tokens must equal input_tokens")
                 for key in ("provider_bill_usd", "ttft_ms", "request_wall_time_ms"):
-                    q[key] = _num(q[key], key)
+                    q[key] = None if key == "ttft_ms" and q[key] is None else _num(q[key], key)
                 q["compression_triggered"] = _bool(q["compression_triggered"], "compression_triggered")
                 q["request_start"] = _time(q["request_start"], "request_start")
                 q["request_end"] = _time(q["request_end"], "request_end")
+                if _time_dt(event.occurred_at) < _time_dt(q["request_end"]):
+                    raise TelemetryError("request event precedes request completion")
                 if _time_dt(q["request_end"]) < _time_dt(q["request_start"]):
                     raise TelemetryError("request_end precedes request_start")
                 status = _text(q["billing_status"], "billing_status")
@@ -270,8 +322,8 @@ def normalize(events: Sequence[Envelope]) -> dict[str, object]:
                     q["provider_metadata"] = _mapping(q["provider_metadata"], "provider_metadata")
                 requests.append(q)
             elif event.event_kind == "tool":
-                allowed = {"tool_call_id", "tool_name", "category", "start", "end", "cost_usd", "result_size_bytes", "result_token_estimate", "retry", "error", "whether_reacquisition", "reacquisition_reason"}
-                required = allowed - {"reacquisition_reason"}
+                allowed = {"tool_call_id", "tool_name", "category", "start", "end", "cost_usd", "result_size_bytes", "result_token_estimate", "retry", "error", "whether_reacquisition", "reacquisition_reason", "is_retrieval"}
+                required = allowed - {"reacquisition_reason", "is_retrieval"}
                 _exact(p, allowed, required, "tool")
                 q = dict(p)
                 for key in ("tool_call_id", "tool_name", "category"):
@@ -279,8 +331,15 @@ def normalize(events: Sequence[Envelope]) -> dict[str, object]:
                 for key in ("cost_usd",): q[key] = _num(q[key], key)
                 for key in ("result_size_bytes", "result_token_estimate"): q[key] = _int(q[key], key)
                 for key in ("retry", "error", "whether_reacquisition"): q[key] = _bool(q[key], key)
+                if q["category"] not in TOOL_CATEGORIES:
+                    raise TelemetryError("unsupported tool category")
+                q["is_retrieval"] = _bool(q.get("is_retrieval", q["category"] == "retrieval" or q["whether_reacquisition"]), "is_retrieval")
+                if q["whether_reacquisition"] and not q["is_retrieval"]:
+                    raise TelemetryError("reacquisition requires is_retrieval=true")
                 q["start"] = _time(q["start"], "tool.start")
                 q["end"] = _time(q["end"], "tool.end")
+                if _time_dt(event.occurred_at) < _time_dt(q["end"]):
+                    raise TelemetryError("tool event precedes tool completion")
                 if _time_dt(q["end"]) < _time_dt(q["start"]):
                     raise TelemetryError("tool end precedes start")
                 reason = q.get("reacquisition_reason")
@@ -341,6 +400,11 @@ def normalize(events: Sequence[Envelope]) -> dict[str, object]:
         outcome = outcomes[0]
         starts = [_time_dt(q["request_start"]) for q in requests]
         ends = [_time_dt(q["request_end"]) for q in requests]
+        if starts != sorted(starts):
+            raise TelemetryError("request starts must follow sequence order")
+        starts.extend(_time_dt(q["start"]) for q in tools)
+        ends.extend(_time_dt(q["end"]) for q in tools)
+        ends.append(_time_dt(rows[-1].occurred_at))
         billing_statuses = {q["billing_status"] for q in requests}
         receipt = {
             "run_id": run_id, "task_id": task_id, "policy_id": policy_id,
@@ -355,11 +419,12 @@ def normalize(events: Sequence[Envelope]) -> dict[str, object]:
             "provider_bill_usd": sum(q["provider_bill_usd"] for q in requests),
             "provider_bill_source": ";".join(sorted({str(q["provider_bill_source"]) for q in requests})),
             "billing_status": next(iter(billing_statuses)) if len(billing_statuses) == 1 else "estimated",
+            "cost_ledger_version": 2, "external_cost_usd": 0.0,
             "tool_cost_usd": sum(q["cost_usd"] for q in tools),
             "reacquisition_cost_usd": sum(q["cost_usd"] for q in tools if q["whether_reacquisition"]),
             "retry_cost_usd": sum(q["cost_usd"] for q in tools if q["retry"]),
             "latency_cost_usd": 0.0, "failure_cost_usd": 0.0,
-            "tool_calls": len(tools), "retrieval_calls": sum(q["category"] == "retrieval" for q in tools),
+            "tool_calls": len(tools), "retrieval_calls": sum(q["is_retrieval"] for q in tools),
             "reacquisition_calls": sum(bool(q["whether_reacquisition"]) for q in tools),
             "retry_count": sum(bool(q["retry"]) for q in tools),
             "compression_calls": len(compressions),
@@ -369,6 +434,7 @@ def normalize(events: Sequence[Envelope]) -> dict[str, object]:
             "scorer_id": outcome["scorer_id"], "scorer_version": outcome["scorer_version"],
             "scoring_provenance": outcome["scoring_provenance"], "notes": [],
         }
+        te.RunReceipt.from_mapping(receipt)
         receipts.append(receipt)
         normalized_runs.append({"run_id": run_id, "requests": requests, "tools": tools, "compressions": compressions, "outcome": outcome})
     return {

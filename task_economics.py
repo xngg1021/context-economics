@@ -120,19 +120,45 @@ class RunReceipt:
     scoring_provenance: str | None = None
     notes: tuple[str, ...] = ()
 
+    # Append extension fields: retain all legacy positional constructor slots.
+    cost_ledger_version: int | None = None
+    external_cost_usd: float = 0.0
+
+    def __post_init__(self):
+        version = self.cost_ledger_version
+        if version is None:
+            if self.reacquisition_cost_usd != 0 or self.retry_cost_usd != 0:
+                raise ReceiptError("ambiguous classified costs: explicitly set cost_ledger_version=1 for legacy additive or migrate to 2")
+            object.__setattr__(self, "cost_ledger_version", 2)
+        elif type(version) is not int or version not in {1, 2}:
+            raise ReceiptError("cost_ledger_version must be 1 or 2")
+        raw = {f.name: getattr(self, f.name) for f in fields(self)}
+        if isinstance(raw["notes"], tuple):
+            raw["notes"] = list(raw["notes"])
+        # Both public entry points share one validator; do not leave direct
+        # construction as a weaker route into accounting or quality gates.
+        validated = self._validated_mapping(raw)
+        for name, value in validated.items():
+            object.__setattr__(self, name, value)
+
     @property
     def observed_cost_usd(self) -> float:
         return (
             self.provider_bill_usd
             + self.tool_cost_usd
-            + self.reacquisition_cost_usd
-            + self.retry_cost_usd
+            + self.external_cost_usd
+            + (self.reacquisition_cost_usd + self.retry_cost_usd
+               if self.cost_ledger_version == 1 else 0.0)
             + self.latency_cost_usd
             + self.failure_cost_usd
         )
 
     @classmethod
     def from_mapping(cls, row: Mapping[str, object]) -> "RunReceipt":
+        return cls(**cls._validated_mapping(row))
+
+    @classmethod
+    def _validated_mapping(cls, row: Mapping[str, object]) -> dict:
         if not isinstance(row, Mapping):
             raise ReceiptError("run receipt must be an object")
         allowed = {f.name for f in fields(cls)}
@@ -144,6 +170,12 @@ class RunReceipt:
         missing = [name for name in required if name not in row]
         if missing:
             raise ReceiptError("missing required receipt fields: " + ", ".join(missing))
+
+        version = row.get("cost_ledger_version", 2)
+        if type(version) is not int or version not in {1, 2}:
+            raise ReceiptError("cost_ledger_version must be 1 (legacy additive) or 2 (attribution)")
+        if "cost_ledger_version" not in row and any(row.get(k, 0) != 0 for k in ("reacquisition_cost_usd", "retry_cost_usd")):
+            raise ReceiptError("ambiguous classified costs: explicitly set cost_ledger_version=1 for legacy additive or migrate to 2")
 
         strings = {}
         for name in (
@@ -209,6 +241,7 @@ class RunReceipt:
 
         numeric_names = (
             "provider_bill_usd",
+            "external_cost_usd",
             "tool_cost_usd",
             "reacquisition_cost_usd",
             "retry_cost_usd",
@@ -227,11 +260,12 @@ class RunReceipt:
         assert isinstance(run_id, str) and isinstance(task_id, str)
         assert isinstance(policy_id, str)
 
-        return cls(
+        return dict(
             run_id=run_id,
             task_id=task_id,
             policy_id=policy_id,
             success=_bool(row["success"], "success"),
+            cost_ledger_version=version,
             task_score=task_score,
             ttft_ms=ttft_ms,
             notes=_notes(row.get("notes")),
@@ -360,6 +394,7 @@ def paired_task_report(
         by_task.setdefault(row.task_id, {}).setdefault(row.policy_id, []).append(row)
 
     deltas: list[dict] = []
+    paired_run_ids: list[str] = []
     omitted_missing_arm: list[str] = []
     omitted_duplicate_arm: list[str] = []
 
@@ -374,6 +409,7 @@ def paired_task_report(
             continue
 
         c, t = control[0], treatment[0]
+        paired_run_ids.extend((c.run_id, t.run_id))
         deltas.append(
             {
                 "task_id": task_id,
@@ -426,8 +462,21 @@ def paired_task_report(
         ),
         "omitted_missing_arm": omitted_missing_arm,
         "omitted_duplicate_arm": omitted_duplicate_arm,
+        "paired_run_ids": paired_run_ids,
+        "paired_task_ids": [d["task_id"] for d in deltas],
         "deltas": deltas,
     }
+
+
+def extract_exact_pairs(receipts, control, treatment):
+    """Single pairing authority for aggregate gates and statistics."""
+    rows = list(receipts)
+    ids = [r.run_id for r in rows]
+    if len(ids) != len(set(ids)):
+        raise ReceiptError("duplicate run_id")
+    report = paired_task_report(rows, control, treatment)
+    paired_ids = set(report["paired_run_ids"])
+    return report, [r for r in rows if r.run_id in paired_ids]
 
 
 def paired_task_deltas(

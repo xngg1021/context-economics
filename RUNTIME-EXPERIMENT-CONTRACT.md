@@ -152,3 +152,35 @@ The three public files are labeled synthetic and exist only to test the contract
 A future result may be described as a real `runtime-A/B` only when the run producer supplies real version-pinned runtime records and provenance. A stronger `task-economic` claim additionally requires interpretable real task outcomes plus billed cost and interaction/retry/latency accounting.
 
 Passing this parser is necessary data hygiene for that experiment; it is not sufficient evidence that the treatment is better.
+
+## Executable experiment runner
+
+`python experiment_runner.py --local-demo --output-root artifacts` executes both
+arms for each task, alternating AB/BA over actual loopback HTTP. `--assignment
+paired-fixed` runs AB throughout. The injectable RuntimeExecutor owns provider
+integration; the runner receives only canonical redacted events and does not
+manage credentials. Both arms must match scheduled identities and manifest pins.
+Local executors cannot declare runtime-A/B or task-economic evidence.
+
+A completed directory contains manifest.json, schedule.json, raw-telemetry.json,
+normalized.json, l5-receipts.json, l6-events.json, joint-report.json,
+paired-statistics.json, acceptance.json and provenance.json. Schedule retains
+task order, arm order and run/task/policy IDs. Existing directories are refused.
+Private artifacts are ignored by git; the local CLI emits only synthetic data.
+The joint report requires complete L5/L6 evidence for every run before writing.
+Provenance includes all manifest pins, scorer/billing sources, assignment and
+bootstrap seed. Wall timings are measured and vary across executions; replaying
+the same recorded receipts yields identical statistics and acceptance. The two
+local arms are intentionally identical, proving orchestration rather than gains.
+
+
+Review hardening: artifact files are first written to a private same-parent
+staging directory and then published by atomic directory rename. Ordinary write
+failures clean staging and permit retry; hard process termination may leave an
+unpublished staging directory but no final output or stale lock. This is atomic
+visibility, not a promise of power-loss durability/fsync. Completed output
+is nonempty and is never replaced by concurrent publishers.
+
+Executor evidence_origin is an informational declaration only. Structural
+eligibility does not authenticate provider, scorer or billing evidence. Formal
+promotion is disabled until an independent trusted attestation verifier exists.

@@ -7,7 +7,8 @@ paired bootstrap mean interval. Fewer than 20 pairs is labeled
 
 Hard gates are configurable for paired coverage, success-quality floor,
 cost-per-success improvement, reacquisition, p95 wall time, prefetch pollution,
-and stale-hit rate. Passing emits only `candidate_for_promotion=true`; there is
+and stale-hit rate. Numerical passing emits `performance_candidate=true`;
+formal candidacy additionally requires evidence eligibility (below). There is
 no production-controller mutation path.
 
 `controller_calibration.py` performs an offline grid sweep over the L6 shadow
@@ -27,3 +28,32 @@ Evidence progression remains explicit:
 | runtime-A/B | Pinned arms executed in a runtime |
 | task-economic | Outcome, observed bill and trajectory jointly support the decision |
 
+
+## Correctness recovery contract
+
+All performance aggregates use the single exact unique paired cohort, including
+context metrics filtered to paired runs when wrapped events are available.
+Missing and duplicate arms never improve performance gates. Coverage is an
+eligibility check, not a performance metric; manifest tasks missing both arms
+still count in its denominator. Zero pairs cannot pass.
+
+`performance_candidate` reports numerical checks. `evidence_structurally_eligible` separately
+requires a valid pinned manifest/join, sufficient paired coverage, scorer
+identity/version/provenance, v2 billing provenance, declared runtime-A/B or
+task-economic evidence, explicit real-provider origin and held-out task-set ref.
+`evidence_eligible` additionally requires independently verified attestation. This
+package has no such verifier, so evidence_eligible and candidate_for_promotion
+remain false even when every caller declaration looks valid. A future trusted
+control plane must authenticate evidence outside the executor/caller boundary;
+there is no caller boolean that enables formal promotion. Default billing must be observed;
+only explicit `allow_estimated=True` admits estimates (reported in output).
+Synthetic/loopback evidence remains shadow-only. Eligibility is structural
+validation of supplied provenance, not authentication of the caller's claims or
+proof of statistical superiority. No production mutation is performed.
+
+Metric direction is explicit: success/score higher is better; cost, retry,
+reacquisition and latency lower is better. Token/cache/compression/tool counts
+are descriptive only and have no win/loss labels. Calibration validates every
+Cartesian grid candidate through ControllerPolicy.from_mapping before checking
+sample sufficiency. Fractions and deadband are in [0,1], base <= maximum;
+invalid values or combinations fail the entire grid instead of being skipped.

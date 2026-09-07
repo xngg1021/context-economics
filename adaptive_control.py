@@ -1005,7 +1005,7 @@ class ControllerPolicy:
         for name in allowed:
             default = getattr(defaults, name)
             raw = row.get(name, default)
-            maximum = 1.0 if any(token in name for token in ("rate", "share", "fraction")) else None
+            maximum = 1.0 if name == "deadband" or any(token in name for token in ("rate", "share", "fraction")) else None
             values[name] = _number(raw, f"policy.{name}", maximum=maximum)
         if values["base_step_fraction"] > values["max_step_fraction"]:
             raise ControlError("base_step_fraction cannot exceed max_step_fraction")

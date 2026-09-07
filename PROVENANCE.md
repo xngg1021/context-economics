@@ -159,3 +159,25 @@ When modifying formulas or model semantics:
 - do not silently repurpose a parameter name from upstream software;
 - keep provider prices out of timeless "laws";
 - add exact version/provenance when a claim depends on implementation details.
+
+## PR #4 correctness recovery successor
+
+Authoritative predecessor main: `1c9afadac48f32bfbd34df5c148d17702d60aaf6`,
+tree `e61ce919b36f815cd57ddc10650bab6892fc6f53`. Successor branch:
+`work/context-runtime-correctness-recovery-20260907`, PR #5.
+Predecessor architecture is retained; correctness acceptance was pending.
+
+Recovery covers all six review defects plus TTFT, metric direction, evidence
+eligibility, complete experiment orchestration and run wall-time bounds.
+Public evidence remains simulation / contract E2E. Local socket billing is
+estimated from a synthetic price, and the local arms are identical. No real
+provider credential run, runtime-A/B superiority or task-economic claim is made.
+Final review, CI IDs, successor SHA/tree and merge/main verification are recorded
+in PR #5's closeout; this file does not self-certify a future commit or review.
+
+
+Successor independent review identified three further issues, now forward-fixed:
+common credential keys, unauthenticated self-declared origins, and partial
+artifact publication. Structural evidence readiness remains available; formal
+promotion is disabled without an independent attestation verifier. Engineering
+correctness acceptance does not enable a production promotion path.

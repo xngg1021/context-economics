@@ -30,3 +30,16 @@ class CalibrationTests(unittest.TestCase):
 
 
 if __name__ == "__main__": unittest.main()
+
+class GridValidationTests(unittest.TestCase):
+    def test_invalid_grid_even_when_insufficient_evidence(self):
+        for key in ('base_step_fraction','max_step_fraction','deadband'):
+            for value in (-.5,2,float('nan'),float('inf'),True,'0.1'):
+                grid={'base_step_fraction':[.05],'max_step_fraction':[.2],'deadband':[.1]};grid[key]=[value]
+                with self.subTest(key=key,value=value),self.assertRaises(cc.CalibrationError):cc.calibrate([],grid)
+        with self.assertRaises(cc.CalibrationError):cc.calibrate([],{'base_step_fraction':[.5],'max_step_fraction':[.2],'deadband':[.1]})
+    def test_selected_policy_reparses(self):
+        import adaptive_control as ac
+        rows=[row(x,'train') for x in 'abc']+[row(x,'holdout') for x in 'de']
+        result=cc.calibrate(rows,{'base_step_fraction':[0,.1],'max_step_fraction':[.2,1],'deadband':[0,1]})
+        ac.ControllerPolicy.from_mapping(result['selected'])

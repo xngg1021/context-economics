@@ -10,7 +10,7 @@ import context_runtime as rt
 def request(event_id="e1", run="r1", task="t1", policy="control", seq=0):
     return {
         "event_id": event_id, "event_kind": "request", "run_id": run,
-        "task_id": task, "policy_id": policy, "occurred_at": "2026-09-07T10:00:00Z",
+        "task_id": task, "policy_id": policy, "occurred_at": "2026-09-07T10:00:00.100Z",
         "payload": {
             "request_id": "q" + event_id, "sequence_index": seq,
             "provider": "fake-http", "model": "deterministic", "model_revision": "v1",
@@ -69,7 +69,7 @@ class RuntimeTests(unittest.TestCase):
 
     def test_prefetch_requires_caller_label(self):
         prefetch = {"event_id":"pf1","event_kind":"context","run_id":"r1",
-            "task_id":"t1","policy_id":"control","occurred_at":"2026-09-07T10:00:00Z",
+            "task_id":"t1","policy_id":"control","occurred_at":"2026-09-07T10:00:00.100Z",
             "payload":{"kind":"prefetch","asset_id":"a","used":True}}
         result = self.normalized([request(), prefetch, outcome()])
         event = result["l6_context_events"]["events"][0]

@@ -95,3 +95,12 @@ jobs:
           --receipts fixtures/run_receipts.json
           --control no-compression
           --treatment aggressive-compression
+      - name: Full counterbalanced local experiment runner
+        run: python experiment_runner.py --local-demo --output-root artifacts
+      - name: Runner artifact contract verification
+        run: >-
+          python runtime_experiment.py
+          --manifest artifacts/local-e2e/manifest.json
+          --receipts artifacts/local-e2e/l5-receipts.json
+          --events artifacts/local-e2e/l6-events.json
+          --require-complete

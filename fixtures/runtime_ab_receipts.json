@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "note": "Synthetic paired run receipts for runtime experiment contract CI; not provider observations.",
+  "note": "Synthetic paired run receipts for runtime experiment contract CI; not provider observations. Migrated legacy independent classified charges into external_cost_usd; attribution fields are non-additive.",
   "runs": [
     {
       "run_id": "c-a",
@@ -31,7 +31,9 @@
       "retry_cost_usd": 0.0,
       "latency_cost_usd": 0.0,
       "failure_cost_usd": 0.0,
-      "failure_class": null
+      "failure_class": null,
+      "cost_ledger_version": 2,
+      "external_cost_usd": 0.0
     },
     {
       "run_id": "c-b",
@@ -62,7 +64,9 @@
       "retry_cost_usd": 0.0,
       "latency_cost_usd": 0.0,
       "failure_cost_usd": 0.0,
-      "failure_class": null
+      "failure_class": null,
+      "cost_ledger_version": 2,
+      "external_cost_usd": 0.0
     },
     {
       "run_id": "t-a",
@@ -93,7 +97,9 @@
       "retry_cost_usd": 0.0,
       "latency_cost_usd": 0.0,
       "failure_cost_usd": 0.0,
-      "failure_class": null
+      "failure_class": null,
+      "cost_ledger_version": 2,
+      "external_cost_usd": 0.0
     },
     {
       "run_id": "t-b",
@@ -124,7 +130,9 @@
       "retry_cost_usd": 0.0,
       "latency_cost_usd": 0.0,
       "failure_cost_usd": 0.0,
-      "failure_class": null
+      "failure_class": null,
+      "cost_ledger_version": 2,
+      "external_cost_usd": 0.0
     }
   ]
 }
