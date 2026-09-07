@@ -210,7 +210,7 @@ success_rate
 | [`CHANGELOG.md`](CHANGELOG.md) | 按版本记录历史；旧版本施工、Review 与修复 chronology 放这里，不放首页 |
 | [`VERSIONING.md`](VERSIONING.md) | 版本规则与 milestone 映射 |
 | [`PROVENANCE.md`](PROVENANCE.md) | Evidence class、source identity、research provenance |
-| [`FINAL-EVIDENCE-BOUNDARY.md`](FINAL-EVIDENCE-BOUNDARY.md) | 0.6.x exact closeout 边界与剩余实证缺口 |
+| [`FINAL-EVIDENCE-BOUNDARY.md`](FINAL-EVIDENCE-BOUNDARY.md) | 当前 0.6.x evidence boundary 与剩余实证缺口 |
 | [`RUNTIME-INSTRUMENTATION.md`](RUNTIME-INSTRUMENTATION.md) | Canonical runtime telemetry schema 与收集语义 |
 | [`RUNTIME-EXPERIMENT-CONTRACT.md`](RUNTIME-EXPERIMENT-CONTRACT.md) | Version-pinned experiment join 与 completeness contract |
 | [`EXPERIMENT-ACCEPTANCE.md`](EXPERIMENT-ACCEPTANCE.md) | 统计/evidence acceptance gate |
@@ -234,7 +234,7 @@ Hermes 普通 mid-session memory write 会持久化到磁盘，但不会改写�
 
 ## 验证
 
-0.6.0 engineering milestone 在 merge 后通过 Python 3.11 / 3.13 完整 validation matrix。当前 0.6.1 只做首页、版本历史和本地化产品化整理，同样必须通过仓库 CI 后才能接受。
+仓库在 Python 3.11 与 3.13 上验证当前支持的标准库工程表面。各版本的具体 CI identity、Review 与 acceptance chronology 统一记录在 [`CHANGELOG.md`](CHANGELOG.md)，不再放在首页。
 
 ## 版本历史
 
