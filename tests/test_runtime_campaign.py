@@ -38,3 +38,18 @@ class CampaignTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as td:
             p=Path(td)/'campaign.json';p.write_text(json.dumps({'bundle_digest':'wrong','pins':{}}))
             with self.assertRaisesRegex(ValueError,'fingerprint'):rc.run(p,td)
+
+    def test_prepare_and_full_frozen_campaign_fixture(self):
+        import provider_runtime as pr
+        from tests.test_provider_runtime import response, REV
+        source={'repository_commit':'a'*40,'repository_tree':'b'*40}
+        with tempfile.TemporaryDirectory() as td,patch.object(rc,'identity',return_value=source):
+            bundle=rc.prepare('openai',REV,'pricing/official-20260907-runtime-stage.json',
+                              Path(td)/'stage','complete','smoke',2)
+            with patch.dict('os.environ',{'OPENAI_API_KEY':'FIXTURE'}),patch.object(pr,'send',return_value=response()):
+                output=rc.run(Path(td)/'stage/campaign.json',Path(td)/'runs')
+            index=json.loads((output/'fingerprints.json').read_text())
+            import hashlib
+            for name,value in index['files'].items():
+                self.assertEqual(hashlib.sha256((output/name).read_bytes()).hexdigest(),value)
+            self.assertTrue((output/'capabilities.json').exists())

@@ -72,7 +72,7 @@ def prepare(provider, revision, pricing_path, output, experiment_id, split, coun
           'scorer_source_digest':pr.digest(Path('provider_runtime.py').read_text()),
           'created_at':datetime.now(timezone.utc).isoformat(),
           'primary_metric':'cost_per_success','assignment':'counterbalanced',
-          'gate_config':asdict(__import__('experiment_analysis').GateConfig()),
+          'gate_config':asdict(__import__('experiment_analysis').GateConfig(max_treatment_p95_wall_time_ms=30000)),
           'production_mutation':False,'calibration':'fixed a priori; no holdout tuning',
           'isolation':{'fresh_session':True,'unique_prefix_per_run':True,
                        'cache_state':'unavailable','provider_cache_key':None,
