@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import re
 import subprocess
@@ -38,7 +39,18 @@ def run_experiment(manifest: rx.ExperimentManifest, tasks: Sequence[Mapping[str,
                    executors: Mapping[str, RuntimeExecutor], output_root: str | Path,
                    *, config: ea.GateConfig | None = None, seed: int = 0,
                    target: str = 'task-economic', allow_estimated: bool = False,
-                   held_out_task_set_ref: str | None = None) -> Path:
+                   held_out_task_set_ref: str | None = None,
+                   supplemental_artifacts: Mapping[str, Mapping[str, object]] | None = None) -> Path:
+    supplemental_artifacts = dict(supplemental_artifacts or {})
+    reserved = {'manifest.json', 'schedule.json', 'raw-telemetry.json', 'normalized.json',
+                'l5-receipts.json', 'l6-events.json', 'joint-report.json', 'paired-statistics.json',
+                'acceptance.json', 'provenance.json', 'fingerprints.json', 'failure.json'}
+    if reserved & supplemental_artifacts.keys():
+        raise RunnerError('supplemental artifact collides with canonical output')
+    for name, value in supplemental_artifacts.items():
+        if not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9_.-]*', name):
+            raise RunnerError('invalid supplemental artifact filename')
+        rt._mapping(value, 'supplemental_artifact')
     raw_manifest = asdict(manifest)
     raw_manifest['expected_task_ids'] = list(manifest.expected_task_ids)
     manifest = rx.ExperimentManifest.from_mapping(raw_manifest)
@@ -76,8 +88,25 @@ def run_experiment(manifest: rx.ExperimentManifest, tasks: Sequence[Mapping[str,
             run_number += 1
             assignment['runs'].append({'run_id':run_id, 'policy_id':policy,
                                        'task_id':assignment['task_id'], 'arm_order':arm_order})
-            events = list(executors[policy].execute(by_task[assignment['task_id']], run_id=run_id,
-                                                  policy_id=policy, manifest=manifest))
+            try:
+                events = list(executors[policy].execute(by_task[assignment['task_id']], run_id=run_id,
+                                                      policy_id=policy, manifest=manifest))
+            except Exception:
+                # No fabricated bill/usage for a request without a valid receipt.
+                # Persist prior completed arms and full expected-task denominator;
+                # a failed campaign cannot enter performance aggregates.
+                failed = {'manifest.json': {'manifest': raw_manifest},
+                          'schedule.json': {'tasks': schedule},
+                          'raw-telemetry.json': collector.bundle(),
+                          'failure.json': {'status': 'aborted', 'failed_run_id': run_id,
+                              'failed_task_id': assignment['task_id'], 'failed_policy_id': policy,
+                              'failure_class': 'executor_failure', 'bill_status': 'unavailable',
+                              'expected_task_count': len(ids), 'attempted_runs': run_number,
+                              'performance_candidate': False, 'evidence_eligible': False,
+                              'candidate_for_promotion': False, 'production_mutation': False}}
+                publish_artifacts(output, {name:json.dumps(value, allow_nan=False)+'\n'
+                                           for name,value in failed.items()})
+                raise RunnerError('executor failed; immutable incomplete campaign recorded') from None
             if not events:
                 raise RunnerError('executor emitted no events')
             for event in events:
@@ -109,9 +138,15 @@ def run_experiment(manifest: rx.ExperimentManifest, tasks: Sequence[Mapping[str,
                  'l6-events.json':normalized['l6_context_events'],
                  'joint-report.json':joint, 'paired-statistics.json':statistics,
                  'acceptance.json':acceptance, 'provenance.json':provenance}
+    artifacts.update(supplemental_artifacts)
     # Validate serialization before creating a finished directory. No task text or answers persisted.
     rendered = {name:json.dumps(te._json_safe(value),indent=2,ensure_ascii=False,allow_nan=False)+'\n'
                 for name,value in artifacts.items()}
+    if supplemental_artifacts:
+        rendered['fingerprints.json'] = json.dumps({
+            'algorithm': 'sha256', 'scope': 'all other files; fingerprint index excluded',
+            'files': {name:hashlib.sha256(content.encode()).hexdigest() for name,content in rendered.items()}
+        }, indent=2)+'\n'
     publish_artifacts(output, rendered)
     return output
 
