@@ -56,7 +56,18 @@ Context Economics 的 L0–L6 是分析/控制 Layer；THM 的 T0–T3 是独立
 
 `context_runtime.py` 提供严格、版本化的 request/tool/context/compression/outcome schema、collector 和 normalizer；`runtime_http.py` 提供最小 OpenAI-compatible HTTP adapter；`experiment_analysis.py` 提供 AB/BA counterbalance、paired descriptive statistics、deterministic bootstrap 和 hard gate；`controller_calibration.py` 提供 train/holdout 分离的 offline replay sweep。
 
-详见 `RUNTIME-INSTRUMENTATION.md`、`RUNTIME-EXPERIMENT-CONTRACT.md` 与 `EXPERIMENT-ACCEPTANCE.md`。所有 public fixture 均为 synthetic；promotion gate 只产生候选，不自动启用生产 controller。
+详见 `RUNTIME-INSTRUMENTATION.md`、`RUNTIME-EXPERIMENT-CONTRACT.md` 与 `EXPERIMENT-ACCEPTANCE.md`。所有 public fixture 均为 synthetic。`performance_candidate` 与 `evidence_eligible` 分开判断；只有两者都通过才允许 `candidate_for_promotion`，且不会自动启用生产 controller。
+
+`experiment_runner.py` 把 task set → paired-fixed / AB/BA → injectable executor → raw telemetry → L5/L6 → joint report → statistics → acceptance 串成完整执行链：
+
+```bash
+python experiment_runner.py --local-demo --output-root artifacts
+python runtime_experiment.py --manifest artifacts/local-e2e/manifest.json --receipts artifacts/local-e2e/l5-receipts.json --events artifacts/local-e2e/l6-events.json --require-complete
+```
+
+标准 HTTP adapter 支持 `choices[0].message.content`、标准 cached usage 和旧 fixture。端点不提供账单时必须提供带定价来源的 estimator，结果明确为 estimated；非流式 TTFT 为 null，完整响应耗时单独记录。完整本地 E2E 已覆盖实际 socket、十份产物和重放确定性，公开证据仍为 simulation / contract E2E。
+
+当前恢复状态：**Correctness Acceptance Pending**。必须在 successor PR 完成 Code Review、可用 Security Review、双 Python CI，并合并后验证 main，才能登记 correctness accepted；这不等于真实 provider runtime-A/B 完成。
 
 ## 3. 核心成本模型
 
@@ -177,16 +188,17 @@ wall time
 
 并对具有唯一 control/treatment 配对的 task 输出逐任务 delta。缺失或重复 arm 会被跳过，不偷偷平均成看似干净的结论。
 
-`observed_cost_usd` 当前可显式组合：
+`cost_ledger_version=2` 的 `observed_cost_usd` 按以下互不重复费用相加；estimated bill 仍保留 estimated 标签：
 
 ```text
 provider_bill
 + tool_cost
-+ reacquisition_cost
-+ retry_cost
++ external_cost
 + latency_cost
 + failure_cost
 ```
+
+`reacquisition_cost_usd` / `retry_cost_usd` 是可重叠的归因子集，不再次相加；external_cost 必须是账本其他项尚未包含的独立费用。旧版非零分类费用需要显式声明 ledger v1 或迁移到 v2，不能静默猜测。
 
 它不负责替实验设计推断因果；真正的结论仍需要 pinned model/provider/harness 和配对任务。
 
@@ -238,8 +250,7 @@ J(policy) =
   - E[token_bill
       + cache_write/storage
       + tool_cost
-      + reacquisition_cost
-      + retry_cost
+      + external_cost
       + latency_cost
       + failure_cost]
 ```

@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased — PR #4 Correctness Recovery
+
+- separates additive ledger v2 from reacquisition/retry attribution with explicit legacy migration;
+- recursively validates bounded metadata, copies collector boundaries, and validates retrieval and timestamp invariants;
+- supports standard text chat-completions with explicit estimated billing and unknown non-streaming TTFT;
+- gates only exact paired cohorts and separates performance from evidence eligibility;
+- validates calibration through the production parser and reports metric-specific win/loss directions;
+- adds injectable paired-fixed / AB/BA runner with ten artifacts and full socket E2E;
+- adds targeted adversarial and seeded invariant regressions; current local suite: 96 tests;
+- preserves L0–L6 and simulation / contract E2E public evidence; final acceptance requires PR review and post-merge CI.
+
 ## Unreleased — Runtime Evidence & Adaptive Calibration
 
 - adds a strict versioned request/tool/context/compression/outcome event schema,

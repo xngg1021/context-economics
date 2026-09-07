@@ -12,6 +12,8 @@ IDs, and run/task/policy isolation fail closed. See `RUNTIME-INSTRUMENTATION.md`
 deltas and evaluates cost per success jointly with quality, reacquisition,
 latency, pollution, and staleness gates. These gates nominate a candidate only.
 
+账本 v2 仅把 provider/tool/external/latency/failure 的互斥费用相加。重取与重试费用是归因子集；若已经在 provider/tool 中计费，不重复加入总成本。历史 v1 必须显式声明；public fixtures 已将旧独立分类费用迁移到 external。实验 gate 的所有性能聚合仅使用 exact paired cohort，覆盖率单独约束证据资格。
+
 > 新增：2026-09-07  
 > 本层是 Context Economics 的闭环层。L0–L4 描述价格、KV、压缩、harness 和 memory；L5 回答最终问题：**一个 context policy 是否真的让任务更便宜、更快、更可靠。**
 
@@ -87,8 +89,7 @@ J(pi) =
       + C_cache_write
       + C_cache_storage
       + C_tool
-      + C_reacquire
-      + C_retry
+      + C_external
       + C_latency
       + C_failure]
 ```

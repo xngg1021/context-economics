@@ -13,6 +13,8 @@ ARC and TinyLFU remain systems analogies: ARC is an online adaptive replacement
 algorithm, not ML training; TinyLFU's transferable principle is that admission
 and replacement are separate decisions. Neither paper establishes an LLM law.
 
+Calibration 的每个 grid candidate 均走生产 `ControllerPolicy.from_mapping`；step fractions、deadband 必须在 [0,1] 且 base <= max。任何非法候选 fail-fast，不通过跳过候选隐藏输入错误。性能 gate 与证据资格分离，synthetic/loopback 的好指标只可作为 shadow candidate。完整执行链见 `experiment_runner.py`。
+
 > 新增：2026-09-07  
 > 当前实现：`adaptive_control.py`，标准库、deterministic、**shadow/advisory only**。  
 > 本层把 L0–L5 的价格、缓存、压缩、harness、持久状态与 task economics 变成可观测的控制问题，但不在缺少真实 runtime/task A/B 时自动修改生产策略。

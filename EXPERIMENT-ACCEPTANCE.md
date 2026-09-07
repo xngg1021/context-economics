@@ -7,7 +7,8 @@ paired bootstrap mean interval. Fewer than 20 pairs is labeled
 
 Hard gates are configurable for paired coverage, success-quality floor,
 cost-per-success improvement, reacquisition, p95 wall time, prefetch pollution,
-and stale-hit rate. Passing emits only `candidate_for_promotion=true`; there is
+and stale-hit rate. Numerical passing emits `performance_candidate=true`;
+formal candidacy additionally requires evidence eligibility (below). There is
 no production-controller mutation path.
 
 `controller_calibration.py` performs an offline grid sweep over the L6 shadow
