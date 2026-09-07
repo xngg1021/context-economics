@@ -1,113 +1,155 @@
 # Changelog
 
-## Unreleased — PR #6 final evidence closeout
+All notable Context Economics repository milestones are recorded here by version. The homepage describes the current system only; detailed implementation chronology, review findings, forward fixes, and evidence-boundary changes belong in this file and the linked provenance documents.
 
-- Disable Git replacement refs and export the checked tree; use fixed trusted Git installation and validate event payloads before aborted telemetry retention.
+## 0.6.1 — 2026-09-08 — README productization and localization
 
-- Bind the entire reviewed campaign via an independently supplied digest before credential selection/delivery, refusing rehashed model/pricing substitutions.
+Documentation-only patch on top of the accepted 0.6.0 engineering milestone.
 
-- Fix startup P1 with trusted isolated bootstrap, credential-free source/blob validation and imports, reviewed-commit pin, and post-import pipe delivery; reject dirty source and ignored forged bytecode.
+### Changed
 
-- Fix three independent security review P1s, including repository-location spoofing and unbounded rehashed workloads; canonical tasks/policy are revalidated before network.
-- Fix initial credential handling P1: provider secrets are removed from source-identity Git subprocesses; fsmonitor and external config are disabled.
-- Add exact Models preflight, 24-pair holdout minimum, runtime scorer-source binding and immutable preflight failures.
-- Retain partial validated request telemetry on later executor failure, classify failures and count attempted/unattempted runs explicitly.
-- Implement offline external-reference attestation verification; no provisioned roots or promotion enablement.
-- Add twelve deterministic operation tasks and a separate public lookup/reacquisition experiment.
-- Extend historical pinned Hermes component replay to head decay, assembly, summary template and reset helpers; full compressor remains pending.
-- Refresh official pricing/billing assessment without rewriting historical snapshots or claiming observed per-request bills.
+- Replaced the debug/history-heavy root README with a current-facing product/research homepage.
+- Added complete maintained homepages for English, Simplified Chinese, Traditional Chinese, Japanese, Korean, German, French, and Spanish.
+- Added a common language switcher to every homepage.
+- Moved historical implementation chronology out of the homepage and into versioned release notes.
+- Added `VERSION` and `VERSIONING.md` with an explicit pre-1.0 milestone policy.
+- Kept the current evidence boundary unchanged: no real provider A/B, observed request-level bill, real L6 calibration, or production promotion is created by this documentation patch.
 
+## 0.6.0 — 2026-09-08 — Secure real-runtime campaign engineering
 
-## Unreleased — Real runtime successor
+Accepted engineering anchor: merge `2aef1e7043273637adff1453d22dafc83d5e0e94` (PR #6), tree `539d135173e47396698bae692559aee057ef8f90`.
 
-- Engineering support added; real evidence blocked by runtime authorization.
-- Adds two native fixture-tested provider parsers, bounded HTTPS executor, nullable native observations, frozen AB/BA campaign tooling and aborted-campaign records.
-- Adds partial exact-source Hermes method replay, twelve-type literal retention fixture, complete-cell descriptive factorial analysis and immutable manual official pricing refresh/check path.
-- No real paired campaign, observed billing, real L6 calibration or production mutation.
+### Added
 
-- PR #5 engineering pipeline accepted on main `79447daafd365edb228c4864fc630f6265dc6287`; post-merge validate `34109557962` succeeded.
-- Real provider evidence pending/staged; task-economic evidence not established; production controller mutation disabled.
+- Native fixture-tested OpenAI Chat Completions and Anthropic Messages provider executors.
+- Frozen smoke / pilot / train / holdout campaign preparation with counterbalanced AB/BA support.
+- Exact model preflight, task/policy/scorer/pricing/source identity binding, and immutable aborted-campaign artifacts.
+- Trusted isolated credentialed bootstrap that validates exact reviewed source and campaign identity before provider credential delivery.
+- Offline external-reference attestation verifier with no preconfigured self-trust root.
+- Deterministic 12-type content-retention/reacquisition tasks and evidence artifacts.
+- Expanded exact-source Hermes component replay for selected compressor helpers.
+- Official pricing snapshot refresh/check path.
 
+### Security / correctness closeout
 
-## Unreleased — PR #4 Correctness Recovery
+Eight P1 findings discovered during code/security review were forward-fixed, covering:
 
-- separates additive ledger v2 from reacquisition/retry attribution with explicit legacy migration;
-- recursively validates bounded metadata, copies collector boundaries, and validates retrieval and timestamp invariants;
-- supports standard text chat-completions with explicit estimated billing and unknown non-streaming TTFT;
-- gates only exact paired cohorts and separates performance from evidence eligibility;
-- validates calibration through the production parser and reports metric-specific win/loss directions;
-- adds injectable paired-fixed / AB/BA runner with ten artifacts and full socket E2E;
-- adds targeted adversarial and seeded invariant regressions; current local suite: 103 tests;
-- routes direct construction and mapping parsing through one receipt validator, including all monetary fields;
-- preserves the full legacy positional RunReceipt constructor order by appending new fields;
-- closes second review with recursive provider metadata allowlisting and direct-constructor ledger migration guard;
-- closes successor review findings: common authentication metadata keys, fail-closed unauthenticated promotion, and atomic artifact publication;
-- preserves L0–L6 and simulation / contract E2E public evidence; final acceptance requires PR review and post-merge CI.
+- provider credential inheritance into Git subprocesses;
+- Git repository-location override spoofing;
+- rehashed workload expansion beyond the reviewed paid-task bound;
+- local module/bytecode execution before source verification;
+- rehashed model/pricing/campaign substitution;
+- current-directory/PATH Git executable hijacking;
+- noncanonical/private partial payload retention;
+- Git replacement-ref source substitution.
 
-## Unreleased — Runtime Evidence & Adaptive Calibration
+Final exact-head review completed clean on feature head `ca3153982a6d0a80e055ee8ad149edf0b55bab40`; all review threads were resolved. Final PR CI `34142353602` and post-merge main CI `34142898117` passed Python 3.11 and 3.13.
 
-- adds a strict versioned request/tool/context/compression/outcome event schema,
-  redacting collector, run normalizer, and L5/L6 projections;
-- distinguishes observed and estimated provider billing and keeps cache-routing
-  hints separate from observed cache behavior;
-- adds a provider-agnostic adapter protocol plus deterministic loopback HTTP E2E;
-- adds counterbalanced AB/BA schedules, paired distribution statistics,
-  deterministic bootstrap intervals, and configurable promotion-candidate gates;
-- adds offline L6 parameter sweep with disjoint train/holdout tasks and explicit
-  insufficient-evidence behavior;
-- expands the public matrix from 57 to 72 tests. No real provider A/B or observed
-  provider billing is claimed.
+### Evidence boundary
 
-## Unreleased — Version-Pinned Runtime Experiment Contract
+- Actual credential-backed completion requests: **0** in the public evidence set.
+- Actual real task pairs: **0**.
+- Request-level observed monetary bill: **not established**.
+- L6 real calibration: **not run**.
+- Real cache × compression factorial: **not run**.
+- Full Hermes `compress()` / host prompt replay: **incomplete**.
+- `evidence_eligible=false`; `candidate_for_promotion=false`; production mutation disabled.
 
-- adds `runtime_experiment.py` to join L5 task-economics receipts with L6 context telemetry by exact run/task/policy identity;
-- pins provider/model/model revision/harness revision/repository commit/runtime environment/task set/pricing snapshot/policy bundle;
-- requires explicit runtime receipt timing/token/cache/cost/interaction/latency/failure fields and timezone-aware ordered timestamps;
-- reports missing/duplicate arms, runs without telemetry and paired coverage, with optional fail-closed `--require-complete`;
-- keeps `declared_evidence_class` as producer metadata and never upgrades structural validity into causal proof;
-- adds synthetic contract fixtures/tests only; no real provider runtime A/B result is claimed.
+See [`FINAL-EVIDENCE-BOUNDARY.md`](FINAL-EVIDENCE-BOUNDARY.md) and [`REAL-RUNTIME-CAMPAIGN.md`](REAL-RUNTIME-CAMPAIGN.md).
 
-## Unreleased — L6 Adaptive Context Control
+## 0.5.0 — 2026-09-07 — Runtime correctness recovery and full experiment runner
 
-### L5 accounting hardening
+Accepted anchor: merge `79447daafd365edb228c4864fc630f6265dc6287` (PR #5), tree `a3eba4099fb8abd24c686ceb16b2ae34fae7aa66`.
 
-- receipt ingestion now rejects ambiguous booleans, unknown fields, duplicate run IDs, non-finite/negative accounting fields, impossible cached-token counts and reacquisition counts above retrieval counts;
-- policy aggregation now reports token/cache totals, task scores, latency percentiles and failure classes;
-- paired treatment/control output now exposes pairing coverage plus missing/duplicate-arm exclusions.
+### Added / hardened
 
-### L6 control plane
+- Correct non-overlapping cost ledger semantics: provider/tool/external/latency/failure remain additive while reacquisition/retry are overlapping attribution subsets.
+- Recursive metadata/privacy validation and retrieval/timestamp invariants.
+- Standard text chat-completions compatibility with explicit estimated billing and unknown non-streaming TTFT.
+- Exact paired cohort gates and separation of performance candidate from evidence eligibility.
+- Validated train/holdout calibration and metric-specific direction semantics.
+- Full paired-fixed / counterbalanced AB/BA experiment runner with atomic publication of the contract artifact set.
+- Seeded invariant/adversarial regression coverage.
 
-- adds `adaptive_control.py` with generic `context_hit / soft_miss / hard_miss / stale_hit` telemetry;
-- adds evidence-gated admission/residency with explicit counterfactual-value handling and bounded exact 0/1 packing;
-- adds locator-token economics, co-demand speculative prefetch with anti-self-training, bounded vector context-budget feedback, context mutation amplification and immutable shared-base economics;
-- adds synthetic L6 fixtures, contract tests and CI smoke coverage;
-- preserves the hard boundary between Context Economics `L0-L6` Layers and THM `T0-T3` memory Tiers; no production policy mutation is enabled.
+### Review closeout
 
-## Unreleased — 2026-09-07 hardening
+PR #4’s six original correctness findings plus seven successor findings were forward-fixed. Final Code Review completed clean on `b2fce60fc107f656026ddc3f89b4254eb5e04292`. Post-merge validate run `34109557962` succeeded on Python 3.11 and 3.13.
 
-Base: `main@53d1e9c84025a76a0e6169ca49afdcf68926fc4a`
+### Evidence boundary
+
+Public evidence remained simulation / deterministic local runtime transport contract E2E. No credential-backed runtime A/B, observed provider bill, task-economic promotion, or production controller improvement was claimed.
+
+## 0.4.0 — 2026-09-07 — Runtime telemetry, paired analysis, and adaptive calibration
+
+Accepted anchor: merge `1c9afadac48f32bfbd34df5c148d17702d60aaf6` (PR #4).
+
+### Added
+
+- Strict versioned request/tool/context/compression/outcome telemetry schema and redacting collector.
+- L5/L6 runtime normalization and provider-agnostic HTTP adapter contract E2E.
+- Counterbalanced AB/BA scheduling, paired descriptive statistics, deterministic bootstrap intervals, and candidate gates.
+- Offline L6 parameter sweep with disjoint train/holdout behavior.
+
+### Evidence boundary
+
+The runtime pipeline was engineering-complete for local deterministic HTTP contract testing only. No real provider runtime, observed provider bill, or task-economic result was established.
+
+## 0.3.0 — 2026-09-07 — Version-pinned runtime experiment contract
+
+Accepted anchor: merge `1979c22840559162897ed7d1e48ea5bd2a9153a1` (PR #3).
+
+### Added
+
+- `runtime_experiment.py` for exact L5 receipt + L6 telemetry joins by run/task/policy identity.
+- Manifest pins for provider, model/revision, harness revision, repository SHA, runtime environment, task set, pricing snapshot, and policy bundle.
+- Fail-closed completeness checks for missing/duplicate arms and orphan/cross-arm context events.
+- Explicit timezone-aware timing/token/cache/cost/failure receipt fields.
+- Producer-declared evidence class retained strictly as metadata rather than causal proof.
+
+### Evidence boundary
+
+Synthetic contract fixtures only; no real provider runtime-A/B claim.
+
+## 0.2.0 — 2026-09-07 — L6 Adaptive Context Control
+
+Accepted anchor: merge `029b375a21ad81f8d062cf33e37348a82f34b4eb` (PR #2).
+
+### Added
+
+- `context_hit / soft_miss / hard_miss / stale_hit / planned_retrieval / prefetch` telemetry.
+- Explicit avoidability and miss-cost accounting.
+- Evidence-gated admission/residency and counterfactual-value protection.
+- Bounded exact 0/1 packing.
+- Locator-token economics.
+- Anti-self-training co-demand speculative prefetch metrics.
+- Bounded vector budget feedback across history/retrieval/memory/tools/repo-map/prefetch/compression retention.
+- Context mutation amplification and immutable shared-base/private-delta economics.
+
+### Boundary
+
+L0–L6 Context Economics Layers remained explicitly independent from THM T0–T3 memory Tiers. All control output remained shadow/advisory.
+
+## 0.1.0 — 2026-09-07 — L5 Task Economics and evidence hardening
+
+Accepted anchor: merge `1f7a71b6ab930183c5f05c40065149d3839a6e23` (PR #1).
 
 ### Correctness
 
-- separated Hermes `target_ratio` tail-budget semantics from modeled summary size;
-- removed the false implication that a finite grid endpoint is a global compression optimum;
-- added nonlinear long-context pricing support;
-- renamed modeled trace-replay quality outputs to explicit `proxy_*` metrics;
-- removed private hard-coded database paths from public replay;
-- corrected L4: ordinary mid-session Hermes memory writes do not change the frozen current-session system prompt;
-- downgraded `prompt_cache_key` from a cache-hit guarantee to a provider routing/caching hint.
+- Separated Hermes `target_ratio` tail-budget semantics from modeled summary size.
+- Removed the false implication that a finite-grid endpoint is a global compression optimum.
+- Added nonlinear long-context pricing support.
+- Renamed modeled replay quality outputs to explicit `proxy_*` metrics.
+- Removed private hard-coded database paths from public replay.
+- Corrected L4 frozen-memory behavior: ordinary mid-session Hermes memory writes do not change the current frozen system prompt.
+- Downgraded `prompt_cache_key` from a cache-hit guarantee to a routing/caching hint.
 
-### Research
+### Added
 
-- added L5 Task Economics & Observability;
-- added 2026 evidence on billed cost, reacquisition, runtime reliability, temporal-information loss, and resource-level KV reuse;
-- added machine-readable pricing snapshot and provenance rules.
+- L5 Task Economics & Observability.
+- Machine-readable pricing snapshot and provenance/evidence classes.
+- Synthetic trace/run-receipt fixtures and portable CI.
+- Task-level receipt aggregation, paired policy deltas, and `cost_per_success`.
 
-### Reproducibility
+## Pre-version research snapshot — 2026-08-19
 
-- added synthetic trace and run-receipt fixtures;
-- added standard-library unit/documentation tests;
-- added Python 3.11/3.13 GitHub Actions validation;
-- added task-level receipt aggregation and paired treatment-control deltas.
-
-No private `state.db`, raw memory file, API credential, or private conversation content is included.
+The original L0–L3 research materials on pricing, serving/KV, compression, and harness behavior predate the formal repository version line. They are preserved as dated research snapshots rather than retroactively renamed as a software release.
