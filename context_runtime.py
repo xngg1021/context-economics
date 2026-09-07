@@ -287,7 +287,7 @@ def normalize(events: Sequence[Envelope]) -> dict[str, object]:
                     "billing_status", "ttft_ms", "request_wall_time_ms",
                     "context_length_before", "context_length_after", "compression_triggered",
                     "compression_id", "cache_routing_hint", "cache_break_observed",
-                    "provider_metadata",
+                    "provider_metadata", "usage_observations",
                 }
                 required = {
                     "request_id", "sequence_index", "provider", "model", "model_revision",
@@ -320,6 +320,22 @@ def normalize(events: Sequence[Envelope]) -> dict[str, object]:
                     raise TelemetryError("billing_status must be observed or estimated")
                 if "provider_metadata" in q:
                     q["provider_metadata"] = _mapping(q["provider_metadata"], "provider_metadata")
+                if "usage_observations" in q:
+                    observations = _mapping(q["usage_observations"], "usage_observations")
+                    observation_fields = {"input_tokens", "output_tokens", "cached_input_tokens", "cache_write_tokens", "service_tier", "response_id"}
+                    _exact(observations, observation_fields, observation_fields, "usage_observations")
+                    for field in observation_fields - {"service_tier", "response_id"}:
+                        value = observations[field]
+                        if value is not None:
+                            _int(value, field)
+                            if value != q[field]:
+                                raise TelemetryError("usage observation conflicts with ledger")
+                        elif field in {"input_tokens", "output_tokens"}:
+                            raise TelemetryError("input/output usage required")
+                    for field in ("service_tier", "response_id"):
+                        if observations[field] is not None:
+                            _text(observations[field], field)
+                    q["usage_observations"] = observations
                 requests.append(q)
             elif event.event_kind == "tool":
                 allowed = {"tool_call_id", "tool_name", "category", "start", "end", "cost_usd", "result_size_bytes", "result_token_estimate", "retry", "error", "whether_reacquisition", "reacquisition_reason", "is_retrieval"}
