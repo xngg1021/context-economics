@@ -440,6 +440,6 @@ tests/test_docs.py
 
 ## PR #6 final evidence boundary
 
-续工已增加精确 Models API 核查、Git 子进程密钥隔离、保留部分请求遥测的分类失败记录、至少 24 对 holdout、离线外部认证验证器，以及 12 类确定性任务和独立重取实验。Hermes 固定源码回放扩展至头部保护衰减、消息组装、摘要模板和状态清理；完整 compressor/LLM 摘要/host transport 仍未完成。
+续工已增加精确 Models API 核查、Git 子进程密钥及仓库定位变量隔离、执行前重新生成有界规范任务、保留部分请求遥测的分类失败记录、至少 24 对 holdout、离线外部认证验证器，以及 12 类确定性任务和独立重取实验。Hermes 固定源码回放扩展至头部保护衰减、消息组装、摘要模板和状态清理；完整 compressor/LLM 摘要/host transport 仍未完成。
 
 五种 provider 环境密钥均不存在，真实请求与配对任务均为 0；费用、真实成功率和性能指标均 unavailable。Fixture 结果不能升级为真实证据。独立信任根为空，L6 保持 shadow，production mutation=false。当前验收及全部缺口见 [FINAL-EVIDENCE-BOUNDARY.md](FINAL-EVIDENCE-BOUNDARY.md)。

@@ -2,7 +2,8 @@
 
 ## Unreleased — PR #6 final evidence closeout
 
-- Fix independent security review P1: provider secrets are removed from source-identity Git subprocesses; fsmonitor and external config are disabled.
+- Fix three independent security review P1s, including repository-location spoofing and unbounded rehashed workloads; canonical tasks/policy are revalidated before network.
+- Fix initial credential handling P1: provider secrets are removed from source-identity Git subprocesses; fsmonitor and external config are disabled.
 - Add exact Models preflight, 24-pair holdout minimum, runtime scorer-source binding and immutable preflight failures.
 - Retain partial validated request telemetry on later executor failure, classify failures and count attempted/unattempted runs explicitly.
 - Implement offline external-reference attestation verification; no provisioned roots or promotion enablement.

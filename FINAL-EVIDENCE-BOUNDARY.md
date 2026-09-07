@@ -27,10 +27,16 @@ are recorded in the PR body after publication, avoiding a self-referential SHA.
 Entry Code Review completed clean on 36f3262. Renewed independent security
 request returned a P1 on Git subprocess credential inheritance (thread
 `PRRT_kwDOUQclMc6f9d5V`); fixed in `f6fd49479fdbde2213e54cc0ee98a0800ebd28c1`
-with regression. New review requests target successor code; a request is not a
+with regression. The follow-up review found two additional P1s: inherited Git repository-location
+overrides and caller-rehashed tasks exceeding the prepared workload bound. Both
+are forward-fixed: Git uses a minimal environment/trusted executable and explicit
+source-directory cwd; run reconstructs 2–40 canonical tasks (holdout at least 24)
+and the exact reviewed policy before network. A real two-checkout regression and
+rehashed workload/policy mutations cover both findings.
+New review requests target successor code; a request is not a
 clean security result. CI 34132270992 passed entry HEAD; 34137446215 passed
 successor de160a4, both Python 3.11/3.13. All 18 local workflow validation commands
-passed after the finalization fix; suite now contains 136 tests. Final exact-head
+passed after the finalization fix; suite now contains 138 tests. Final exact-head
 review/CI and unresolved-thread status must be checked in PR #6 before merge.
 Independent security completion remains a hard merge gate. No merge claimed.
 
@@ -40,7 +46,9 @@ Independent security completion remains a hard merge gate. No merge claimed.
   completion requests; alias mismatch and redirects refused. Holdout preparation
   requires at least 24 pairs. Scorer source is rechecked at run time.
 - Git identity subprocesses omit the five provider secret variables, disable
-  filesystem monitors and ignore global/system Git configuration. Parent secrets
+  filesystem monitors and ignore global/system Git configuration. All repository
+  discovery overrides are absent, Git runs in the module source directory and
+  run revalidates canonical task count/content and the reviewed policy. Parent secrets
   remain available solely to the provider request code.
 - Failed runs retain already validated request events, classified errors,
   attempted-run success denominator and unattempted counts. Model preflight and

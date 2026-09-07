@@ -61,7 +61,11 @@ The CLI emits a bounded BLOCKED result rather than printing native exceptions.
 Before a paid completion, it queries the official Models endpoint and requires
 the exact dated ID; alias substitution is rejected. Git identity subprocesses
 receive no provider credential variables, disable fsmonitor and ignore global/system
-Git config. The scorer source digest is checked again at execution.
+Git config. The scorer source digest is checked again at execution. Git uses a minimal
+environment, trusted executable and explicit module-source cwd, so repository
+discovery overrides cannot mask a dirty checkout. Execution regenerates the
+canonical 2–40 tasks (holdout at least 24) and requires the reviewed policy;
+recomputing caller JSON digests cannot substitute an arbitrary paid workload.
 
 Run smoke first, then a new `--split pilot --count 10` bundle. A formal
 `--split holdout --count 24` bundle must follow successful smoke/pilot review;
