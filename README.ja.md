@@ -46,7 +46,7 @@ Context Economics の `L0–L6` は **Layer** です。THM の `T0–T3` memory 
 ### 決定論的モデルと Task Economics
 
 - `model.py`：再現可能なコスト/感度モデル。非線形 long-context pricing に対応。
-- `real_model.py`：公開 fixture またはユーザー提供 trace を replay。モデル仮定は proxy として明示。
+- `real_model.py`：公開 fixture またはユーザー提供 trace を replay。モデル仮定値は proxy として明示。
 - `task_economics.py`：run receipt から success、provider bill、additive cost、latency、retry、retrieval/reacquisition、`cost_per_success` を集計。
 - 有限グリッドは **`lowest-cost point in THIS GRID`** とだけ報告し、global optimum とは呼びません。
 
@@ -202,7 +202,7 @@ success_rate
 | [`CHANGELOG.md`](CHANGELOG.md) | Version ごとの履歴。旧施工/Review/debug chronology はここに置く |
 | [`VERSIONING.md`](VERSIONING.md) | Version policy と milestone map |
 | [`PROVENANCE.md`](PROVENANCE.md) | Evidence class、source identity、research provenance |
-| [`FINAL-EVIDENCE-BOUNDARY.md`](FINAL-EVIDENCE-BOUNDARY.md) | 0.6.x の exact closeout boundary |
+| [`FINAL-EVIDENCE-BOUNDARY.md`](FINAL-EVIDENCE-BOUNDARY.md) | 現在の 0.6.x evidence boundary と残る実証 gap |
 | [`RUNTIME-INSTRUMENTATION.md`](RUNTIME-INSTRUMENTATION.md) | Canonical runtime telemetry |
 | [`RUNTIME-EXPERIMENT-CONTRACT.md`](RUNTIME-EXPERIMENT-CONTRACT.md) | Version-pinned experiment contract |
 | [`EXPERIMENT-ACCEPTANCE.md`](EXPERIMENT-ACCEPTANCE.md) | Statistical/evidence acceptance |
@@ -226,7 +226,7 @@ Hermes の通常の mid-session memory write は disk に永続化されても�
 
 ## Validation
 
-0.6.0 engineering milestone は merge 後に Python 3.11 / 3.13 の full validation matrix を通過しました。0.6.1 は homepage、version history、localization の productization patch であり、同じ CI を通過してから受理します。
+サポート対象の standard-library engineering surface は Python 3.11 と 3.13 で検証します。各 version の具体的な CI identity、Review、acceptance chronology は [`CHANGELOG.md`](CHANGELOG.md) に置き、homepage には残しません。
 
 ## Version history
 
