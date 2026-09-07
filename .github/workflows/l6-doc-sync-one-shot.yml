@@ -17,6 +17,26 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.13'
+      - name: Repair one-shot README command anchor
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('update_l6_docs.py')
+          text = p.read_text(encoding='utf-8')
+          idx = text.index('"README reproducibility"')
+          start = text.rfind('    text = replace_once(', 0, idx)
+          end = text.index('    write("README.md", text)', idx)
+          replacement = r"""    marker = "  --treatment aggressive-compression\n```"
+              replacement = r'''  --treatment aggressive-compression
+          python adaptive_control.py telemetry \
+            --events fixtures/context_access_events.json
+          python adaptive_control.py budget \
+            --state fixtures/context_budget_state.json
+          ```'''
+              text = replace_once(text, marker, replacement, "README reproducibility")
+          """
+          p.write_text(text[:start] + replacement + text[end:], encoding='utf-8', newline='\n')
+          PY
       - name: Generate current L6 documentation
         run: python update_l6_docs.py
       - name: Validate generated tree
