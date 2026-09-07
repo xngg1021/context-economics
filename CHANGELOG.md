@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased — Real runtime successor
+
+- PR #5 engineering pipeline accepted on main `79447daafd365edb228c4864fc630f6265dc6287`; post-merge validate `34109557962` succeeded.
+- Real provider evidence pending/staged; task-economic evidence not established; production controller mutation disabled.
+
+
 ## Unreleased — PR #4 Correctness Recovery
 
 - separates additive ledger v2 from reacquisition/retry attribution with explicit legacy migration;

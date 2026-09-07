@@ -67,7 +67,7 @@ python runtime_experiment.py --manifest artifacts/local-e2e/manifest.json --rece
 
 标准 HTTP adapter 支持 `choices[0].message.content`、标准 cached usage 和旧 fixture。端点不提供账单时必须提供带定价来源的 estimator，结果明确为 estimated；非流式 TTFT 为 null，完整响应耗时单独记录。完整本地 E2E 已覆盖实际 socket、十份产物和重放确定性，公开证据仍为 simulation / contract E2E。
 
-本轮恢复从 **Correctness Acceptance Pending** 开始。最终 engineering acceptance 以 PR #5 的 review / CI / merge 后 main closeout 为准；这不等于真实 provider runtime-A/B 完成。
+PR #5 engineering pipeline 已验收：main `79447daafd365edb228c4864fc630f6265dc6287`，post-merge validate `34109557962` 成功。真实 provider evidence pending/staged；task-economic evidence 尚未建立；production controller mutation disabled。
 
 ## 3. 核心成本模型
 
@@ -371,12 +371,19 @@ L4-memory-profile.md
 L5-task-economics.md
 L6-adaptive-context-control.md
 RUNTIME-EXPERIMENT-CONTRACT.md
+RUNTIME-INSTRUMENTATION.md
+EXPERIMENT-ACCEPTANCE.md
 
 model.py
 real_model.py
 task_economics.py
 adaptive_control.py
 runtime_experiment.py
+context_runtime.py
+runtime_http.py
+experiment_analysis.py
+experiment_runner.py
+controller_calibration.py
 
 fixtures/sample_sessions.json
 fixtures/run_receipts.json
@@ -402,7 +409,7 @@ tests/test_docs.py
 1. 为当前 Hermes compressor 做 **exact-version replay**：固定 summary budget、tail mode、protected messages、prompt rebuild 与 provider transport。
 2. 保存 per-request billing trace，而不是只使用 session aggregate。
 3. 用 `runtime_experiment.py` 的 contract 真正执行 version-pinned held-out task A/B，并用真实 task outcome 校准 `real_model.py` 中的 proxy retention curve。
-4. 将 tool/reacquisition/retry/latency 与 L6 context events 自动采集进同一 run，而不是只接受离线 JSON。
+4. Collector、normalizer、runner 已聚合 canonical events；尚需真实 provider/harness adapters 自动映射 native tool/reacquisition/retry/latency 与 L6 telemetry。
 5. 研究按内容类型的 retention policy：路径、数字、时间、否定约束、用户意图、tool protocol、可重取 tool output 应区别处理。
 6. 对 L0 pricing snapshot 做定期刷新；快衰减信息不能永久写死在“定律”里。
 7. 在不同 provider/cache tier 上做 `cache × compression` factorial A/B，检验任务层是替代还是互补。
