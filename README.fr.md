@@ -202,7 +202,7 @@ success_rate
 | [`CHANGELOG.md`](CHANGELOG.md) | Historique version par version ; la chronologie Review/debug n’est plus sur la homepage |
 | [`VERSIONING.md`](VERSIONING.md) | Politique de version et milestone map |
 | [`PROVENANCE.md`](PROVENANCE.md) | Evidence classes, source identity, provenance |
-| [`FINAL-EVIDENCE-BOUNDARY.md`](FINAL-EVIDENCE-BOUNDARY.md) | Frontière exacte de closeout 0.6.x |
+| [`FINAL-EVIDENCE-BOUNDARY.md`](FINAL-EVIDENCE-BOUNDARY.md) | Frontière actuelle 0.6.x et lacunes empiriques restantes |
 | [`RUNTIME-INSTRUMENTATION.md`](RUNTIME-INSTRUMENTATION.md) | Télémétrie runtime canonique |
 | [`RUNTIME-EXPERIMENT-CONTRACT.md`](RUNTIME-EXPERIMENT-CONTRACT.md) | Contrat d’expérience version-pinned |
 | [`EXPERIMENT-ACCEPTANCE.md`](EXPERIMENT-ACCEPTANCE.md) | Acceptance statistique/evidence |
@@ -226,7 +226,7 @@ Un ordinary Hermes mid-session memory write persiste sur disque mais ne réécri
 
 ## Validation
 
-Le milestone engineering 0.6.0 a passé après merge la matrice complète Python 3.11 / 3.13. La version 0.6.1 est un patch de productisation de la homepage, de l’historique et de la localisation et doit passer les mêmes gates CI.
+La surface d’ingénierie standard-library prise en charge est validée sur Python 3.11 et 3.13. Les identités CI, Reviews et chronologies d’acceptance propres à chaque version sont conservées dans [`CHANGELOG.md`](CHANGELOG.md), pas sur la homepage.
 
 ## Historique des versions
 
