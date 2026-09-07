@@ -76,3 +76,10 @@ jobs:
           --base-units 100
           --consumers 3
           --private-delta-units 10
+      - name: Version-pinned runtime experiment contract smoke test
+        run: >-
+          python runtime_experiment.py
+          --manifest fixtures/runtime_experiment_manifest.json
+          --receipts fixtures/runtime_ab_receipts.json
+          --events fixtures/runtime_context_events.json
+          --require-complete
