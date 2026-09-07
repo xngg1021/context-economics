@@ -72,3 +72,9 @@ its result is always labeled estimated. Missing both fails actionably.
 Non-streaming TTFT is unknown/null. request_wall_time_ms measures full body
 receipt; it is not first-token latency. Streaming and tool-call answers are
 outside this minimal adapter's support.
+
+Run timestamps must be ordered, request/tool events cannot precede completion,
+and outcome is last. Run wall time spans the earliest request/tool start through
+the outcome, including post-request tool/scoring time. Request wall time remains
+a separate full-response transport measurement. Seeded stdlib invariant tests
+exercise monetary conservation, retrieval/cache bounds and L5/L6 round trips.

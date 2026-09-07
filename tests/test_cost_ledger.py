@@ -7,7 +7,7 @@ from tests.test_context_runtime import request, outcome
 
 def tool(reacq=False, retry=False, category='retrieval'):
     return {'event_id':'tool', 'event_kind':'tool', 'run_id':'r1', 'task_id':'t1',
-            'policy_id':'control', 'occurred_at':'2026-09-07T10:00:00Z',
+            'policy_id':'control', 'occurred_at':'2026-09-07T10:00:00.200Z',
             'payload':{'tool_call_id':'tool', 'tool_name':'lookup', 'category':category,
                 'start':'2026-09-07T10:00:00Z', 'end':'2026-09-07T10:00:00Z',
                 'cost_usd':1, 'result_size_bytes':0, 'result_token_estimate':0,

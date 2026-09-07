@@ -98,6 +98,16 @@ class GateConfig:
     max_stale_hit_rate: float = 1.0
     min_paired_coverage: float = 1.0
 
+    def __post_init__(self):
+        for field in fields(self):
+            value = getattr(self, field.name)
+            if isinstance(value, bool) or not isinstance(value, (int, float)):
+                raise AnalysisError(f"{field.name} must be numeric")
+            if (not math.isfinite(value) and not (field.name == "max_treatment_p95_wall_time_ms" and value == math.inf)) or value < 0:
+                raise AnalysisError(f"{field.name} must be non-negative and finite")
+            if field.name in {"quality_epsilon", "min_cost_per_success_improvement", "max_prefetch_pollution", "max_stale_hit_rate", "min_paired_coverage"} and value > 1:
+                raise AnalysisError(f"{field.name} must be <= 1")
+
     @classmethod
     def parse(cls, value: Mapping[str, object]) -> "GateConfig":
         if not isinstance(value, Mapping): raise AnalysisError("gate config must be an object")

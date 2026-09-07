@@ -104,6 +104,8 @@ def _mapping(value: object, name: str) -> dict[str, object]:
             return out
         if isinstance(item, (list, tuple)):
             return [visit(child, depth+1) for child in item]
+        if isinstance(item, str) and len(item) > MAX_METADATA_BYTES:
+            raise TelemetryError("metadata exceeds size limit")
         if item is None or type(item) in (str, bool, int):
             return item
         if type(item) is float and math.isfinite(item):
@@ -257,6 +259,11 @@ def normalize(events: Sequence[Envelope]) -> dict[str, object]:
         compressions: list[dict[str, object]] = []
         outcomes: list[dict[str, object]] = []
         task_id, policy_id = identity[run_id]
+        occurred = [_time_dt(e.occurred_at) for e in rows]
+        if occurred != sorted(occurred):
+            raise TelemetryError("run event timestamps must be ordered")
+        if rows[-1].event_kind != "outcome":
+            raise TelemetryError("outcome must be the last event in a run")
         for event in rows:
             p = event.payload
             if event.event_kind == "request":
@@ -292,6 +299,8 @@ def normalize(events: Sequence[Envelope]) -> dict[str, object]:
                 q["compression_triggered"] = _bool(q["compression_triggered"], "compression_triggered")
                 q["request_start"] = _time(q["request_start"], "request_start")
                 q["request_end"] = _time(q["request_end"], "request_end")
+                if _time_dt(event.occurred_at) < _time_dt(q["request_end"]):
+                    raise TelemetryError("request event precedes request completion")
                 if _time_dt(q["request_end"]) < _time_dt(q["request_start"]):
                     raise TelemetryError("request_end precedes request_start")
                 status = _text(q["billing_status"], "billing_status")
@@ -317,6 +326,8 @@ def normalize(events: Sequence[Envelope]) -> dict[str, object]:
                     raise TelemetryError("reacquisition requires is_retrieval=true")
                 q["start"] = _time(q["start"], "tool.start")
                 q["end"] = _time(q["end"], "tool.end")
+                if _time_dt(event.occurred_at) < _time_dt(q["end"]):
+                    raise TelemetryError("tool event precedes tool completion")
                 if _time_dt(q["end"]) < _time_dt(q["start"]):
                     raise TelemetryError("tool end precedes start")
                 reason = q.get("reacquisition_reason")
@@ -377,6 +388,11 @@ def normalize(events: Sequence[Envelope]) -> dict[str, object]:
         outcome = outcomes[0]
         starts = [_time_dt(q["request_start"]) for q in requests]
         ends = [_time_dt(q["request_end"]) for q in requests]
+        if starts != sorted(starts):
+            raise TelemetryError("request starts must follow sequence order")
+        starts.extend(_time_dt(q["start"]) for q in tools)
+        ends.extend(_time_dt(q["end"]) for q in tools)
+        ends.append(_time_dt(rows[-1].occurred_at))
         billing_statuses = {q["billing_status"] for q in requests}
         receipt = {
             "run_id": run_id, "task_id": task_id, "policy_id": policy_id,
