@@ -87,6 +87,48 @@ class DocumentationContractTests(unittest.TestCase):
             text = (ROOT / "fixtures" / name).read_text(encoding="utf-8")
             self.assertIn("Synthetic", text)
 
+    def test_productized_localized_homepages_are_complete_and_current(self):
+        version = (ROOT / "VERSION").read_text(encoding="utf-8").strip()
+        self.assertEqual(version, "0.6.1")
+        names = (
+            "README.md",
+            "README.zh-CN.md",
+            "README.zh-TW.md",
+            "README.ja.md",
+            "README.ko.md",
+            "README.de.md",
+            "README.fr.md",
+            "README.es.md",
+        )
+        language_links = (
+            "README.md",
+            "README.zh-CN.md",
+            "README.zh-TW.md",
+            "README.ja.md",
+            "README.ko.md",
+            "README.de.md",
+            "README.fr.md",
+            "README.es.md",
+        )
+        for name in names:
+            text = (ROOT / name).read_text(encoding="utf-8")
+            self.assertGreater(len(text), 6000, name)
+            self.assertIn("0.6.1", text, name)
+            self.assertIn("L0", text, name)
+            self.assertIn("L6 Adaptive Context Control", text, name)
+            self.assertIn("cost_per_success", text, name)
+            self.assertIn("CHANGELOG.md", text, name)
+            self.assertIn("VERSIONING.md", text, name)
+            self.assertIn("FINAL-EVIDENCE-BOUNDARY.md", text, name)
+            for link in language_links:
+                self.assertIn(link, text, f"{name} missing {link}")
+
+    def test_changelog_uses_versioned_release_sections(self):
+        changelog = (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
+        for version in ("0.6.1", "0.6.0", "0.5.0", "0.4.0", "0.3.0", "0.2.0", "0.1.0"):
+            self.assertIn(f"## {version}", changelog)
+        self.assertNotIn("## Unreleased —", changelog)
+        self.assertTrue((ROOT / "VERSIONING.md").is_file())
 
 
 if __name__ == "__main__":
