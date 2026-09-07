@@ -67,6 +67,27 @@ class DocumentationContractTests(unittest.TestCase):
         self.assertIn("runtime-A/B", l6)
         self.assertIn("task-economic", provenance)
 
+    def test_runtime_experiment_contract_is_linked_and_evidence_bounded(self):
+        readme = (ROOT / "README.md").read_text(encoding="utf-8")
+        path = ROOT / "RUNTIME-EXPERIMENT-CONTRACT.md"
+        self.assertTrue(path.is_file())
+        self.assertIn(path.name, readme)
+        doc = path.read_text(encoding="utf-8")
+        self.assertIn("Version-Pinned Runtime Experiment Contract", doc)
+        self.assertIn("declared_evidence_class", doc)
+        self.assertIn("not sufficient evidence", doc)
+        self.assertIn("causal", doc)
+
+    def test_runtime_experiment_public_fixtures_are_synthetic(self):
+        for name in (
+            "runtime_experiment_manifest.json",
+            "runtime_ab_receipts.json",
+            "runtime_context_events.json",
+        ):
+            text = (ROOT / "fixtures" / name).read_text(encoding="utf-8")
+            self.assertIn("Synthetic", text)
+
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -470,4 +470,4 @@ python adaptive_control.py share \
 - L6 可以替 THM 决定 T0–T3；
 - 自动控制应该直接写回生产 harness。
 
-下一阶段应使用真实、版本固定的 runtime/task A/B，把 L5 receipts 与 L6 telemetry 接起来，再决定哪些 shadow recommendation 可以升级。
+`runtime_experiment.py` 现已完成这一步的**结构化数据合同**：它把 version-pinned L5 receipts 与 run-linked L6 telemetry 对齐，并检查 arm completeness，但公开 fixture 仍是 synthetic。下一阶段仍是执行真实、版本固定的 runtime/task A/B，再决定哪些 shadow recommendation 可以升级。详见 [Runtime Experiment Contract](RUNTIME-EXPERIMENT-CONTRACT.md)。
