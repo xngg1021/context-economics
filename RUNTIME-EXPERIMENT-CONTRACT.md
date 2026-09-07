@@ -1,5 +1,10 @@
 # Version-Pinned Runtime Experiment Contract
 
+The upstream raw-to-normalized contract is executable in `context_runtime.py`;
+paired analysis and promotion-candidate gates are in `experiment_analysis.py`.
+The local HTTP E2E uses an estimated fixture bill and therefore does not upgrade
+this repository to real provider runtime evidence.
+
 > Added: 2026-09-07. Executable contract: `runtime_experiment.py`.
 > Current public fixtures are **synthetic contract fixtures**. This file does not claim that a real provider/harness A/B has already been executed.
 

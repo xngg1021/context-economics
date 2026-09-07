@@ -4,7 +4,7 @@
 > correctness hardening：2026-09-07  
 > 当前研究对象：LLM / agent 在输入、缓存、压缩、工具、记忆、重取、重试、延迟、任务成功与自适应上下文控制之间的成本—质量权衡。
 
-本仓库把上下文视为一种会被反复携带、缓存、压缩、重取和重新计算的运行资产。目标不是单纯“省 token”，而是把 **provider 定价 → serving/KV → 压缩算法 → harness 调度 → 持久记忆 → 任务经济学** 放进同一个可验证框架。
+本仓库把上下文视为一种会被反复携带、缓存、压缩、重取和重新计算的运行资产。目标不是单纯“省 token”，而是把 **provider 定价 → serving/KV → 压缩算法 → harness 调度 → 持久记忆 → 任务经济学 → shadow adaptive control** 放进同一个可验证框架，并提供从 runtime instrumentation 到 version-pinned A/B acceptance 的可执行路径。
 
 ## 0. 证据纪律
 
@@ -17,6 +17,8 @@
 | `provider-doc` | 厂商官方定价/API/机制说明；属于快衰减信息 |
 | `paper-result` | 论文在其特定实验条件下报告的结果 |
 | `model-proxy` | 本仓库模型假设推导出的代理指标；不能冒充真实正确率、召回率或生产效果 |
+
+当前最高公开证据仍是 `simulation` / deterministic local HTTP contract E2E；尚无凭据支持的真实 provider bill trace、真实 provider runtime A/B 或 task-economic promotion 结论。
 
 `PROVENANCE.md` 固定本轮版本身份和来源边界；`pricing-snapshot.json` 保存机器可读的定价快照。L0–L3 的 2026-08-19 文档作为历史研究快照保留，9 月 7 日的新材料和勘误汇总在 `RESEARCH-ADDENDUM-2026-09-07.md`。
 
@@ -48,7 +50,15 @@ L6 Adaptive Context Control
    mutation amplification / shared immutable base
 ```
 
-## 2. 核心成本模型
+Context Economics 的 L0–L6 是分析/控制 Layer；THM 的 T0–T3 是独立仓库的 memory residency/access Tier。两者只能通过 telemetry/contract 交换 miss、locator、prefetch、budget 等证据，taxonomy 不合并。
+
+## 2. Runtime evidence pipeline
+
+`context_runtime.py` 提供严格、版本化的 request/tool/context/compression/outcome schema、collector 和 normalizer；`runtime_http.py` 提供最小 OpenAI-compatible HTTP adapter；`experiment_analysis.py` 提供 AB/BA counterbalance、paired descriptive statistics、deterministic bootstrap 和 hard gate；`controller_calibration.py` 提供 train/holdout 分离的 offline replay sweep。
+
+详见 `RUNTIME-INSTRUMENTATION.md`、`RUNTIME-EXPERIMENT-CONTRACT.md` 与 `EXPERIMENT-ACCEPTANCE.md`。所有 public fixture 均为 synthetic；promotion gate 只产生候选，不自动启用生产 controller。
+
+## 3. 核心成本模型
 
 在最简单的固定价、固定 cache-hit share `rho` 条件下，第 `k` 轮：
 
@@ -76,7 +86,7 @@ N* = (p_in + r*p_out) / ((1-r)*p_eff)
 
 在这个局部账单模型里 cache 越便宜，携带原文的边际价格越低，压缩回本越慢。进入 L5 后，压缩造成的状态丢失、reacquisition、工具失败和重试会改变关系，因此缓存与压缩在任务层可能互补，也可能出现非单调最优点。
 
-## 3. `model.py`：确定性成本模型
+## 4. `model.py`：确定性成本模型
 
 运行：
 
@@ -106,7 +116,7 @@ python model.py
 
 历史 Kimi `$3 / $0.3 / $15` 继续作为 2026-08-19 study snapshot 用于复现，不自动代表 live quote。
 
-## 4. `real_model.py`：真实 trace + 明示代理质量模型
+## 5. `real_model.py`：真实 trace + 明示代理质量模型
 
 公开可复现：
 
@@ -135,7 +145,7 @@ proxy_ux_failures
 
 旧版 README 中“0.998 终态召回”“30–45 万上下文已经被压缩反向提质”等说法，现统一降级为给定假设下的 sensitivity result。只有真实 task/runtime A/B 才能升级为 `runtime-measured`。
 
-## 5. `task_economics.py`：把 L5 变成可运行代码
+## 6. `task_economics.py`：把 L5 变成可运行代码
 
 合成 receipt 示例：
 
@@ -180,7 +190,7 @@ provider_bill
 
 它不负责替实验设计推断因果；真正的结论仍需要 pinned model/provider/harness 和配对任务。
 
-## 6. Hermes 行为勘误
+## 7. Hermes 行为勘误
 
 2026-09-07 核查的 Hermes 上游文档/源码表明：`MEMORY.md` / `USER.md` 在 session start 形成 **frozen system-prompt snapshot**；中途 memory write 会立即持久化，但不会改写当前会话已冻结的 system prompt。
 
@@ -211,7 +221,7 @@ prompt rebuild / compaction / new session / toolset/model/prompt mutation
 
 Kimi 的 `prompt_cache_key` 也从“消除随机 miss”修正为 provider 的 routing/caching hint；session/task key 是当前官方文档更自然的 coding-agent 粒度，profile-static key 只作为待测实验。
 
-## 7. 2026-09-07 研究增补
+## 8. 2026-09-07 研究增补
 
 不改写 L0–L3 的历史快照，新增材料集中记录在 `RESEARCH-ADDENDUM-2026-09-07.md`：
 

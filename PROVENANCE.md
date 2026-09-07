@@ -83,8 +83,26 @@ See `pricing-snapshot.json`.
 - arXiv:2608.01056 — Control Under Compression
 - arXiv:2608.11775 — The Sleeping Agent
 - arXiv:2608.19662 — ReCache
+- arXiv:2608.00902 — Practical Online KV Cache Compaction for LLM Agents
+- Megiddo and Modha, FAST 2003 — ARC: A Self-Tuning, Low Overhead Replacement Cache
+- Einziger, Friedman and Manes, arXiv:1512.00727 / ACM TOCS — TinyLFU and W-TinyLFU
 
 These are used for the claims explicitly described in `README.md` and `L5-task-economics.md`; their reported numbers remain scoped to their own experimental settings.
+
+Provider cache semantics were rechecked on 2026-09-07 against the official
+OpenAI prompt-caching guide, Anthropic prompt-caching documentation, and Gemini
+context-caching/pricing documentation. The unified runtime schema consequently
+preserves provider-native metadata and does not normalize a routing hint into a
+cache hit, a cache write into invalidation, or a provider-specific storage fee
+into a universal field.
+
+## Runtime evidence completion boundary
+
+The deterministic loopback HTTP fixture executes socket I/O and validates the
+full adapter -> collector -> normalizer path. Its billing source is a fixture and
+its status is `estimated`. Current public evidence is therefore analytic,
+simulation, and contract E2E. Credential-backed provider traces, observed bills,
+pinned runtime A/B, and task-economic promotion remain unverified.
 
 ## L6 implementation evidence boundary
 
