@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased — PR #6 final evidence closeout
+
+- Fix independent security review P1: provider secrets are removed from source-identity Git subprocesses; fsmonitor and external config are disabled.
+- Add exact Models preflight, 24-pair holdout minimum, runtime scorer-source binding and immutable preflight failures.
+- Retain partial validated request telemetry on later executor failure, classify failures and count attempted/unattempted runs explicitly.
+- Implement offline external-reference attestation verification; no provisioned roots or promotion enablement.
+- Add twelve deterministic operation tasks and a separate public lookup/reacquisition experiment.
+- Extend historical pinned Hermes component replay to head decay, assembly, summary template and reset helpers; full compressor remains pending.
+- Refresh official pricing/billing assessment without rewriting historical snapshots or claiming observed per-request bills.
+
+
 ## Unreleased — Real runtime successor
 
 - Engineering support added; real evidence blocked by runtime authorization.

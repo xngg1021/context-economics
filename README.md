@@ -56,7 +56,7 @@ Context Economics 的 L0–L6 是分析/控制 Layer；THM 的 T0–T3 是独立
 
 `context_runtime.py` 提供严格、版本化的 request/tool/context/compression/outcome schema、collector 和 normalizer；`runtime_http.py` 提供最小 OpenAI-compatible HTTP adapter；`experiment_analysis.py` 提供 AB/BA counterbalance、paired descriptive statistics、deterministic bootstrap 和 hard gate；`controller_calibration.py` 提供 train/holdout 分离的 offline replay sweep。
 
-详见 `RUNTIME-INSTRUMENTATION.md`、`RUNTIME-EXPERIMENT-CONTRACT.md` 与 `EXPERIMENT-ACCEPTANCE.md`。所有 public fixture 均为 synthetic。`performance_candidate` 与 `evidence_eligible` 分开判断；只有两者都通过才允许 `candidate_for_promotion`。当前尚未实现独立证据认证，因此正式 promotion 保持 false；调用方声明只决定 `evidence_structurally_eligible`，不会自动启用生产 controller。
+详见 `RUNTIME-INSTRUMENTATION.md`、`RUNTIME-EXPERIMENT-CONTRACT.md` 与 `EXPERIMENT-ACCEPTANCE.md`。所有 public fixture 均为 synthetic。`performance_candidate` 与 `evidence_eligible` 分开判断；只有两者都通过才允许 `candidate_for_promotion`。现已实现离线外部认证引用验证器，但未配置独立信任根或接通认证 gate，因此正式 promotion 保持 false；调用方声明只决定 `evidence_structurally_eligible`，不会自动启用生产 controller。
 
 `experiment_runner.py` 把 task set → paired-fixed / AB/BA → injectable executor → raw telemetry → L5/L6 → joint report → statistics → acceptance 串成完整执行链：
 
@@ -437,3 +437,9 @@ tests/test_docs.py
 - The Sleeping Agent: https://arxiv.org/abs/2608.11775
 
 更早文献继续保留在 L0–L3 原始底稿中；来源与版本边界见 `PROVENANCE.md`。
+
+## PR #6 final evidence boundary
+
+续工已增加精确 Models API 核查、Git 子进程密钥隔离、保留部分请求遥测的分类失败记录、至少 24 对 holdout、离线外部认证验证器，以及 12 类确定性任务和独立重取实验。Hermes 固定源码回放扩展至头部保护衰减、消息组装、摘要模板和状态清理；完整 compressor/LLM 摘要/host transport 仍未完成。
+
+五种 provider 环境密钥均不存在，真实请求与配对任务均为 0；费用、真实成功率和性能指标均 unavailable。Fixture 结果不能升级为真实证据。独立信任根为空，L6 保持 shadow，production mutation=false。当前验收及全部缺口见 [FINAL-EVIDENCE-BOUNDARY.md](FINAL-EVIDENCE-BOUNDARY.md)。

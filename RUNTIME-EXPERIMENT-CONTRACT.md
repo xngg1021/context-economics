@@ -1,6 +1,6 @@
 # Version-Pinned Runtime Experiment Contract
 
-> Runtime successor status (2026-09-07): provider adapters are fixture-tested; credential-backed evidence is BLOCKED by runtime authorization. Partial Hermes trace-replay and synthetic retention do not establish runtime-A/B or task-economic results. Production mutation remains disabled. See [REAL-RUNTIME-CAMPAIGN.md](REAL-RUNTIME-CAMPAIGN.md).
+> Runtime successor status (2026-09-07): provider adapters are fixture-tested; credential-backed evidence is BLOCKED by runtime authorization. Expanded Hermes component trace-replay and deterministic retention-task fixtures do not establish runtime-A/B or task-economic results. Production mutation remains disabled. See [REAL-RUNTIME-CAMPAIGN.md](REAL-RUNTIME-CAMPAIGN.md).
 
 The upstream raw-to-normalized contract is executable in `context_runtime.py`;
 paired analysis and promotion-candidate gates are in `experiment_analysis.py`.
@@ -185,4 +185,4 @@ is nonempty and is never replaced by concurrent publishers.
 
 Executor evidence_origin is an informational declaration only. Structural
 eligibility does not authenticate provider, scorer or billing evidence. Formal
-promotion is disabled until an independent trusted attestation verifier exists.
+promotion stays disabled: the offline verifier has no provisioned independent trust root or authenticated acceptance-gate integration.
