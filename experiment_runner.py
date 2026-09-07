@@ -89,9 +89,16 @@ def run_experiment(manifest: rx.ExperimentManifest, tasks: Sequence[Mapping[str,
             assignment['runs'].append({'run_id':run_id, 'policy_id':policy,
                                        'task_id':assignment['task_id'], 'arm_order':arm_order})
             try:
-                events = list(executors[policy].execute(by_task[assignment['task_id']], run_id=run_id,
-                                                      policy_id=policy, manifest=manifest))
-            except Exception:
+                event_count = 0
+                for event in executors[policy].execute(by_task[assignment['task_id']], run_id=run_id,
+                                                       policy_id=policy, manifest=manifest):
+                    if (event.get('run_id'), event.get('task_id'), event.get('policy_id')) != (run_id, assignment['task_id'], policy):
+                        raise RunnerError('executor crossed scheduled run/task/policy identity')
+                    collector.capture(event)
+                    event_count += 1
+                if not event_count:
+                    raise RunnerError('executor emitted no events')
+            except Exception as exc:
                 # No fabricated bill/usage for a request without a valid receipt.
                 # Persist prior completed arms and full expected-task denominator;
                 # a failed campaign cannot enter performance aggregates.
@@ -100,19 +107,22 @@ def run_experiment(manifest: rx.ExperimentManifest, tasks: Sequence[Mapping[str,
                           'raw-telemetry.json': collector.bundle(),
                           'failure.json': {'status': 'aborted', 'failed_run_id': run_id,
                               'failed_task_id': assignment['task_id'], 'failed_policy_id': policy,
-                              'failure_class': 'executor_failure', 'bill_status': 'unavailable',
+                              'failure_class': failure_category(exc), 'bill_status': 'partial_or_unavailable',
                               'expected_task_count': len(ids), 'attempted_runs': run_number,
+                              'scheduled_run_count': len(ids)*2,
+                              'failed_run_count': 1, 'unattempted_run_count': len(ids)*2-run_number,
+                              'success_denominator_attempted': run_number,
+                              'successful_run_count': sum(e['run_id'] != run_id and e['event_kind']=='outcome' and e['payload']['success']
+                                                          for e in collector.bundle()['events']),
                               'performance_candidate': False, 'evidence_eligible': False,
                               'candidate_for_promotion': False, 'production_mutation': False}}
-                publish_artifacts(output, {name:json.dumps(value, allow_nan=False)+'\n'
-                                           for name,value in failed.items()})
+                failed.update(supplemental_artifacts)
+                rendered = {name:json.dumps(value, allow_nan=False)+'\n' for name,value in failed.items()}
+                rendered['fingerprints.json'] = json.dumps({'algorithm':'sha256',
+                    'scope':'all other files; fingerprint index excluded',
+                    'files':{name:hashlib.sha256(value.encode()).hexdigest() for name,value in rendered.items()}})+'\n'
+                publish_artifacts(output, rendered)
                 raise RunnerError('executor failed; immutable incomplete campaign recorded') from None
-            if not events:
-                raise RunnerError('executor emitted no events')
-            for event in events:
-                if (event.get('run_id'), event.get('task_id'), event.get('policy_id')) != (run_id, assignment['task_id'], policy):
-                    raise RunnerError('executor crossed scheduled run/task/policy identity')
-                collector.capture(event)
     raw = collector.bundle()
     normalized = rt.normalize([rt.Envelope.parse(row) for row in raw['events']])
     receipt_rows = normalized['l5_receipts']['runs']
@@ -149,6 +159,24 @@ def run_experiment(manifest: rx.ExperimentManifest, tasks: Sequence[Mapping[str,
         }, indent=2)+'\n'
     publish_artifacts(output, rendered)
     return output
+
+
+def failure_category(exc):
+    """Only recognized provider categories may cross the public error boundary."""
+    from provider_runtime import ProviderError
+    aliases = {'usage_unavailable':'usage_missing', 'model_revision_mismatch':'response_schema',
+               'cache_usage_unavailable_for_pricing':'cache_usage_ambiguous',
+               'conflicting_cache_usage':'cache_usage_ambiguous', 'invalid_cache_usage':'cache_usage_ambiguous',
+               'unpriced_service_tier':'pricing_mismatch', 'long_context_tier_unpriced':'pricing_mismatch',
+               'cache_write_pricing_unsupported':'pricing_mismatch'}
+    allowed = {'credential_unavailable','credential','model_unavailable','rate_limit','timeout','transport',
+               'provider_http_error','response_parse','usage_missing','cache_usage_ambiguous',
+               'billing_unavailable','pricing_mismatch','scorer_failure','artifact_failure','response_schema',
+               'redirect_refused','response_too_large'}
+    if isinstance(exc, ProviderError):
+        category = aliases.get(str(exc), str(exc))
+        return category if category in allowed else 'response_schema'
+    return 'executor_failure'
 
 
 def publish_artifacts(output: Path, rendered: Mapping[str, str]) -> None:

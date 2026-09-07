@@ -62,8 +62,8 @@ def prepare(provider, revision, pricing_path, output, experiment_id, split, coun
     pr.ProviderExecutor(provider,revision,price)
     if row['provider'] != provider or row['currency'] != 'USD' or row['unit'] != 'per-million-tokens':
         raise ValueError('pricing unit/provider mismatch')
-    if split == 'holdout' and count < 20:
-        raise ValueError('formal holdout requires at least 20 pairs')
+    if split == 'holdout' and count < 24:
+        raise ValueError('formal holdout requires at least 24 pairs')
     tasks=task_set(split,count)
     policy={'control':{'history_limit':None},'treatment':{'history_limit':4}}
     pins={**source,'provider':provider,'model_revision':revision,'split':split,
@@ -113,7 +113,12 @@ def run(path, output):
         'policy_bundle_ref':'sha256:'+pins['policy_digest'],
         'expected_task_ids':[t['task_id'] for t in bundle['tasks']]})
     executors={arm:pr.ProviderExecutor(provider,rev,price,**policy) for arm,policy in bundle['policy'].items()}
-    extras={'capabilities.json':{a:e.capabilities.to_mapping() for a,e in executors.items()},
+    __import__('experiment_analysis').GateConfig(**pins['gate_config'])
+    if Path(output, bundle['experiment_id']).exists():
+        raise ValueError('experiment output already exists')
+    model_check=pr.verify_model(provider,pins['model_revision'])
+    extras={'model-availability.json':model_check,
+            'capabilities.json':{a:e.capabilities.to_mapping() for a,e in executors.items()},
             'environment.json':{'python':platform.python_version(),'system':platform.system(),**current},
             'pricing-snapshot-ref.json':{'digest':pins['pricing_digest'],'source_ref':price.source},
             'scorer-ref.json':{'identity':pins['scorer'],'digest':pins['scorer_source_digest']},

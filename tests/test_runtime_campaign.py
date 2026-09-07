@@ -46,7 +46,7 @@ class CampaignTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as td,patch.object(rc,'identity',return_value=source):
             bundle=rc.prepare('openai',REV,'pricing/official-20260907-runtime-stage.json',
                               Path(td)/'stage','complete','smoke',2)
-            with patch.dict('os.environ',{'OPENAI_API_KEY':'FIXTURE'}),patch.object(pr,'send',return_value=response()):
+            with patch.dict('os.environ',{'OPENAI_API_KEY':'FIXTURE'}),patch.object(pr,'send',return_value=response()),patch.object(pr,'verify_model',return_value={'available':True}):
                 output=rc.run(Path(td)/'stage/campaign.json',Path(td)/'runs')
             index=json.loads((output/'fingerprints.json').read_text())
             import hashlib
@@ -67,3 +67,34 @@ class CampaignTests(unittest.TestCase):
             with patch.dict('os.environ',{'OPENAI_API_KEY':'FIXTURE'}),patch.object(pr,'send') as send:
                 with self.assertRaisesRegex(ValueError,'price does not match'):rc.run(p,Path(td)/'runs')
                 send.assert_not_called()
+
+    def test_partial_request_survives_later_executor_failure(self):
+        import provider_runtime as pr
+        from tests.test_context_runtime import request
+        class Partial:
+            evidence_origin='loopback'
+            def execute(self, task, *, run_id, policy_id, manifest):
+                event=request()
+                event.update(run_id=run_id, task_id=task['task_id'], policy_id=policy_id)
+                yield event
+                raise pr.ProviderError('scorer_failure')
+        m=er.local_manifest('partial','a'*40)
+        with tempfile.TemporaryDirectory() as td:
+            with self.assertRaises(er.RunnerError):
+                er.run_experiment(m,[{'task_id':t} for t in m.expected_task_ids],
+                                  {'control':Partial(),'treatment':Partial()},td)
+            p=Path(td)/'partial'
+            raw=json.loads((p/'raw-telemetry.json').read_text())
+            self.assertEqual(len(raw['events']),1)
+            failure=json.loads((p/'failure.json').read_text())
+            self.assertEqual(failure['failure_class'],'scorer_failure')
+            self.assertEqual(failure['success_denominator_attempted'],1)
+            self.assertEqual(failure['successful_run_count'],0)
+            self.assertEqual(failure['unattempted_run_count'],3)
+            self.assertTrue((p/'fingerprints.json').exists())
+
+    def test_holdout_minimum_24(self):
+        source={'repository_commit':'a'*40,'repository_tree':'b'*40}
+        with tempfile.TemporaryDirectory() as td, patch.object(rc,'identity',return_value=source):
+            with self.assertRaisesRegex(ValueError,'24 pairs'):
+                rc.prepare('openai','gpt-4.1-mini-2025-04-14','pricing/official-20260907-runtime-stage.json',td,'too-small','holdout',20)

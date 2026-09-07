@@ -106,3 +106,24 @@ class ProviderTests(unittest.TestCase):
             'cache_write_tokens':None,'service_tier':None,'response_id':None}
         with self.assertRaisesRegex(rt.TelemetryError,'zero legacy projection'):
             rt.normalize([rt.Envelope.parse(x) for x in (r,outcome())])
+
+class ModelPreflightTests(unittest.TestCase):
+    def test_exact_model_not_alias(self):
+        with patch.object(pr, 'send', return_value={'id':REV}) as send:
+            self.assertTrue(pr.verify_model('openai', REV)['available'])
+            send.assert_called_once_with('openai', None, model_lookup=REV)
+        with patch.object(pr, 'send', return_value={'id':'gpt-4.1-mini'}):
+            with self.assertRaisesRegex(pr.ProviderError, 'model_unavailable'):
+                pr.verify_model('openai', REV)
+
+    def test_fixed_model_get_endpoint_and_no_redirect(self):
+        response=MagicMock();response.__enter__.return_value.read.return_value=json.dumps({'id':REV}).encode()
+        opener=MagicMock();opener.open.return_value=response
+        with patch.dict('os.environ', {'OPENAI_API_KEY':'FIXTURE'}),patch('urllib.request.build_opener',return_value=opener):
+            pr.verify_model('openai', REV)
+            request=opener.open.call_args.args[0]
+            self.assertEqual(request.full_url, 'https://api.openai.com/v1/models/'+REV)
+            self.assertEqual(request.get_method(), 'GET')
+            with self.assertRaises(pr.ProviderError):pr.send('openai',None,model_lookup='../other')
+        with self.assertRaisesRegex(pr.ProviderError, 'redirect_refused'):
+            pr.NoRedirect().redirect_request(None,None,302,'',{},'https://example.com')

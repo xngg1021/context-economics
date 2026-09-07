@@ -5,6 +5,7 @@ import hashlib
 import json
 import os
 import re
+import socket
 import time
 import urllib.error
 import urllib.request
@@ -54,7 +55,7 @@ class NoRedirect(urllib.request.HTTPRedirectHandler):
         raise ProviderError('redirect_refused')
 
 
-def send(provider, body, timeout=30):
+def send(provider, body, timeout=30, *, model_lookup=None):
     """Credentials only from named environment variables; fixed HTTPS destinations."""
     key = os.environ.get(CREDENTIALS[provider])
     if not key:
@@ -64,7 +65,13 @@ def send(provider, body, timeout=30):
         headers['Authorization'] = 'Bearer ' + key
     else:
         headers.update({'x-api-key': key, 'anthropic-version': '2023-06-01'})
-    request = urllib.request.Request(ENDPOINTS[provider], data=json.dumps(body).encode(), headers=headers)
+    endpoint = ENDPOINTS[provider]
+    if model_lookup is not None:
+        if not re.fullmatch(r'[A-Za-z0-9_.-]+', model_lookup):
+            raise ProviderError('invalid_model_identity')
+        endpoint = {'openai': 'https://api.openai.com/v1/models/',
+                    'anthropic': 'https://api.anthropic.com/v1/models/'}[provider] + model_lookup
+    request = urllib.request.Request(endpoint, data=None if model_lookup else json.dumps(body).encode(), headers=headers)
     # Never follow a redirect with authentication. Standard TLS verification stays on.
     try:
         with urllib.request.build_opener(NoRedirect()).open(request, timeout=timeout) as response:
@@ -75,10 +82,26 @@ def send(provider, body, timeout=30):
     except urllib.error.HTTPError as exc:
         code = exc.code
         exc.close()
-        raise ProviderError('rate_limit' if code == 429 else 'provider_http_error') from None
-    except (OSError, ValueError, urllib.error.URLError) as exc:
-        category = str(exc) if isinstance(exc, ProviderError) else 'transport_or_parse_failure'
+        category = {401: 'credential', 403: 'credential', 429: 'rate_limit'}.get(code, 'provider_http_error')
+        if code == 404 and model_lookup:
+            category = 'model_unavailable'
         raise ProviderError(category) from None
+    except (TimeoutError, socket.timeout):
+        raise ProviderError('timeout') from None
+    except json.JSONDecodeError:
+        raise ProviderError('response_parse') from None
+    except (OSError, ValueError, urllib.error.URLError) as exc:
+        category = str(exc) if isinstance(exc, ProviderError) else 'transport'
+        raise ProviderError(category) from None
+
+
+def verify_model(provider, revision):
+    """Authenticated exact Models endpoint check, no alias substitution or text storage."""
+    payload = send(provider, None, model_lookup=revision)
+    if not isinstance(payload, dict) or payload.get('id') != revision:
+        raise ProviderError('model_unavailable')
+    return {'provider': provider, 'model_revision': revision, 'available': True,
+            'verified_at': datetime.now(timezone.utc).isoformat(), 'source': 'official-models-api'}
 
 
 def native_response(provider, payload, revision):
