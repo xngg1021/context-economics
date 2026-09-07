@@ -132,6 +132,14 @@ class RunReceipt:
             object.__setattr__(self, "cost_ledger_version", 2)
         elif type(version) is not int or version not in {1, 2}:
             raise ReceiptError("cost_ledger_version must be 1 or 2")
+        raw = {f.name: getattr(self, f.name) for f in fields(self)}
+        if isinstance(raw["notes"], tuple):
+            raw["notes"] = list(raw["notes"])
+        # Both public entry points share one validator; do not leave direct
+        # construction as a weaker route into accounting or quality gates.
+        validated = self._validated_mapping(raw)
+        for name, value in validated.items():
+            object.__setattr__(self, name, value)
 
     @property
     def observed_cost_usd(self) -> float:
@@ -147,6 +155,10 @@ class RunReceipt:
 
     @classmethod
     def from_mapping(cls, row: Mapping[str, object]) -> "RunReceipt":
+        return cls(**cls._validated_mapping(row))
+
+    @classmethod
+    def _validated_mapping(cls, row: Mapping[str, object]) -> dict:
         if not isinstance(row, Mapping):
             raise ReceiptError("run receipt must be an object")
         allowed = {f.name for f in fields(cls)}
@@ -248,7 +260,7 @@ class RunReceipt:
         assert isinstance(run_id, str) and isinstance(task_id, str)
         assert isinstance(policy_id, str)
 
-        return cls(
+        return dict(
             run_id=run_id,
             task_id=task_id,
             policy_id=policy_id,

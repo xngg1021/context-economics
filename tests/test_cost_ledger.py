@@ -46,3 +46,17 @@ class CostLedgerTests(unittest.TestCase):
         self.assertEqual(receipt.tool_cost_usd,1)
         self.assertEqual(receipt.observed_cost_usd,1)
         self.assertEqual(receipt.cost_ledger_version,2)
+
+    def test_direct_monetary_fields_share_parser_validation(self):
+        for field in ('external_cost_usd','provider_bill_usd','tool_cost_usd',
+                      'reacquisition_cost_usd','retry_cost_usd','latency_cost_usd','failure_cost_usd'):
+            for value in (-100,float('nan'),float('inf'),True,'1'):
+                with self.subTest(field=field,value=value),self.assertRaises(te.ReceiptError):
+                    te.RunReceipt('r','t','p',True,cost_ledger_version=2,**{field:value})
+    def test_direct_constructor_and_mapping_have_identical_validation(self):
+        for kwargs in ({'cached_input_tokens':1,'input_tokens':0},
+                       {'retrieval_calls':0,'reacquisition_calls':1},
+                       {'wall_time_ms':-1},{'success':'false'}):
+            raw={'run_id':'r','task_id':'t','policy_id':'p','success':True,**kwargs}
+            with self.assertRaises(te.ReceiptError):te.RunReceipt(**raw)
+            with self.assertRaises(te.ReceiptError):te.RunReceipt.from_mapping(raw)

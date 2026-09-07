@@ -100,3 +100,9 @@ bearer/oauth token names are also explicitly denied in generic payload mappings.
 Ledger extension fields are appended after all original RunReceipt fields to
 preserve positional Python callers. A legacy positional tool cost retains its
 slot and value; tests cover both keyword and positional constructor migration.
+
+
+Direct Python construction and from_mapping now share the same complete receipt
+validator. Every additive and attribution cost is finite, numeric, nonnegative;
+booleans/strings are rejected. Identity, token/retrieval invariants and quality/
+timing fields have identical validation on both entry points.
