@@ -10,6 +10,9 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
+import re
+from datetime import datetime
 from dataclasses import dataclass, fields
 from pathlib import Path
 from typing import Mapping, Sequence
@@ -29,17 +32,27 @@ REQUIRED_RECEIPT_FIELDS = {
     "model",
     "model_revision",
     "harness_revision",
+    "started_at",
+    "ended_at",
+    "task_score",
     "input_tokens",
     "cached_input_tokens",
     "cache_write_tokens",
     "output_tokens",
     "provider_bill_usd",
+    "tool_cost_usd",
+    "reacquisition_cost_usd",
+    "retry_cost_usd",
+    "latency_cost_usd",
+    "failure_cost_usd",
     "tool_calls",
     "retrieval_calls",
     "reacquisition_calls",
     "retry_count",
     "compression_calls",
+    "ttft_ms",
     "wall_time_ms",
+    "failure_class",
 }
 
 
@@ -51,6 +64,25 @@ def _text(value: object, name: str) -> str:
     if not isinstance(value, str) or not value.strip():
         raise ExperimentError(f"{name} must be a non-empty string")
     return value
+
+
+def _git_sha(value: object, name: str) -> str:
+    text = _text(value, name)
+    if re.fullmatch(r"[0-9a-f]{40}", text) is None:
+        raise ExperimentError(f"{name} must be an exact 40-character lowercase Git SHA")
+    return text
+
+
+def _timestamp(value: object, name: str) -> datetime:
+    text = _text(value, name)
+    normalized = text[:-1] + "+00:00" if text.endswith("Z") else text
+    try:
+        parsed = datetime.fromisoformat(normalized)
+    except ValueError as exc:
+        raise ExperimentError(f"{name} must be an ISO-8601 timestamp") from exc
+    if parsed.tzinfo is None or parsed.utcoffset() is None:
+        raise ExperimentError(f"{name} must include an explicit timezone offset")
+    return parsed
 
 
 def _string_list(value: object, name: str) -> tuple[str, ...]:
@@ -114,7 +146,7 @@ class ExperimentManifest:
             model=_text(row["model"], "model"),
             model_revision=_text(row["model_revision"], "model_revision"),
             harness_revision=_text(row["harness_revision"], "harness_revision"),
-            repository_commit=_text(row["repository_commit"], "repository_commit"),
+            repository_commit=_git_sha(row["repository_commit"], "repository_commit"),
             runtime_environment_ref=_text(row["runtime_environment_ref"], "runtime_environment_ref"),
             task_set_ref=_text(row["task_set_ref"], "task_set_ref"),
             pricing_snapshot_ref=_text(row["pricing_snapshot_ref"], "pricing_snapshot_ref"),
@@ -244,6 +276,11 @@ def _validate_receipt_pin(manifest: ExperimentManifest, receipt: te.RunReceipt) 
                 f"run {receipt.run_id}: {name} mismatch: {actual!r} != {wanted!r}"
             )
 
+    started = _timestamp(receipt.started_at, f"run {receipt.run_id}.started_at")
+    ended = _timestamp(receipt.ended_at, f"run {receipt.run_id}.ended_at")
+    if ended < started:
+        raise ExperimentError(f"run {receipt.run_id}: ended_at precedes started_at")
+
 
 def build_joint_report(
     manifest: ExperimentManifest,
@@ -365,6 +402,16 @@ def build_joint_report(
     }
 
 
+def _json_safe(value: object) -> object:
+    if isinstance(value, float) and not math.isfinite(value):
+        return None
+    if isinstance(value, dict):
+        return {key: _json_safe(item) for key, item in value.items()}
+    if isinstance(value, list):
+        return [_json_safe(item) for item in value]
+    return value
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="Validate and join a version-pinned Context Economics runtime experiment."
@@ -389,7 +436,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             load_experiment_events(args.events),
             require_complete=args.require_complete,
         )
-        print(json.dumps(report, ensure_ascii=False, indent=2, allow_nan=False))
+        print(json.dumps(_json_safe(report), ensure_ascii=False, indent=2, allow_nan=False))
         return 0
     except (ExperimentError, json.JSONDecodeError, OSError, TypeError, ValueError) as exc:
         print(

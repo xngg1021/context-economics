@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased — Version-Pinned Runtime Experiment Contract
+
+- adds `runtime_experiment.py` to join L5 task-economics receipts with L6 context telemetry by exact run/task/policy identity;
+- pins provider/model/model revision/harness revision/repository commit/runtime environment/task set/pricing snapshot/policy bundle;
+- requires explicit runtime receipt timing/token/cache/cost/interaction/latency/failure fields and timezone-aware ordered timestamps;
+- reports missing/duplicate arms, runs without telemetry and paired coverage, with optional fail-closed `--require-complete`;
+- keeps `declared_evidence_class` as producer metadata and never upgrades structural validity into causal proof;
+- adds synthetic contract fixtures/tests only; no real provider runtime A/B result is claimed.
+
 ## Unreleased — L6 Adaptive Context Control
 
 ### L5 accounting hardening

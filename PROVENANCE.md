@@ -102,6 +102,14 @@ It has not yet been promoted to `runtime-A/B` or `task-economic` evidence. In pa
 
 Context Economics `L0-L6` and THM `T0-T3` are independent taxonomies. Cross-repository measurements may be exchanged, but neither hierarchy is rewritten as the other.
 
+## Runtime experiment contract boundary
+
+`runtime_experiment.py` joins L5 receipts and L6 events under exact experiment pins. The public `runtime_*` fixtures are synthetic and validate only schema/alignment behavior.
+
+`declared_evidence_class` is producer-supplied metadata, not independently verified evidence. `runtime_design_structurally_ready=true` means the declared runtime design has complete arms/run-linked telemetry and an eligible assignment method; it does not prove provider contact, provider billing, randomization, scoring validity or causality. The validator therefore never emits a causal-success claim.
+
+Real runtime promotion still requires external provenance for the version-pinned provider/model/harness/runtime/task execution. See `RUNTIME-EXPERIMENT-CONTRACT.md`.
+
 ## Reproduction
 
 Public/portable:
@@ -113,6 +121,7 @@ python real_model.py --fixture fixtures/sample_sessions.json
 python task_economics.py --receipts fixtures/run_receipts.json --control no-compression --treatment aggressive-compression
 python adaptive_control.py telemetry --events fixtures/context_access_events.json
 python adaptive_control.py budget --state fixtures/context_budget_state.json
+python runtime_experiment.py --manifest fixtures/runtime_experiment_manifest.json --receipts fixtures/runtime_ab_receipts.json --events fixtures/runtime_context_events.json --require-complete
 ```
 
 Private trace replay:

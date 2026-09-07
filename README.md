@@ -303,7 +303,17 @@ python adaptive_control.py budget \
 
 完整定义与边界见 `L6-adaptive-context-control.md`。当前 L6 的证据等级仍是 `analytic + simulation/contract`；没有真实 held-out runtime/task A/B 时，不把 shadow proposal 称为生产最优，也不自动写回 harness/provider 配置。
 
-## 10. 可复现性与 CI
+## 10. `runtime_experiment.py`：version-pinned L5/L6 join contract
+
+L5 receipts 与 L6 context telemetry 现在有独立的运行实验数据合同：`runtime_experiment.py` 要求 experiment manifest 固定 provider/model/model revision/harness revision/repository commit/runtime environment/task set/pricing snapshot/policy bundle，并将每个 L6 event 通过 `run_id + policy_id + task_id` 与 L5 receipt 对齐。
+
+它显式报告 missing/duplicate arms、没有 context events 的 run、paired coverage，并可用 `--require-complete` 把结构不完整直接变成失败。Runtime receipt 中时间戳、token/cache、provider bill、各类成本、interaction counts、TTFT/wall time 等字段必须显式提供，不能靠默认零掩盖缺失。
+
+`declared_evidence_class` 仍只是 experiment producer 的声明。即使报告显示 `runtime_design_structurally_ready=true`，validator 也不会推断 provider 真正被调用、账单真实、任务分配随机或 treatment 具有因果优势；输出固定保留 `causal_claim = not inferred by this validator`。完整合同见 `RUNTIME-EXPERIMENT-CONTRACT.md`。
+
+公开 fixtures 只用于 synthetic contract CI，不能升级为 runtime benchmark。
+
+## 11. 可复现性与 CI
 
 仓库核心验证只依赖 Python 标准库：
 
@@ -315,13 +325,15 @@ python task_economics.py \
   --receipts fixtures/run_receipts.json \
   --control no-compression \
   --treatment aggressive-compression
+python adaptive_control.py telemetry --events fixtures/context_access_events.json
+python runtime_experiment.py --manifest fixtures/runtime_experiment_manifest.json --receipts fixtures/runtime_ab_receipts.json --events fixtures/runtime_context_events.json --require-complete
 ```
 
 GitHub Actions 在 Python 3.11 / 3.13 上执行同一套单测与 smoke tests。
 
 公开 fixture 全部是 synthetic；仓库不包含私人 `state.db`、原始 conversation、MEMORY/USER 原文、API key 或账户身份。
 
-## 10. 仓库结构
+## 12. 仓库结构
 
 ```text
 README.md
@@ -336,28 +348,40 @@ L2-compression.md
 L3-harness.md
 L4-memory-profile.md
 L5-task-economics.md
+L6-adaptive-context-control.md
+RUNTIME-EXPERIMENT-CONTRACT.md
 
 model.py
 real_model.py
 task_economics.py
+adaptive_control.py
+runtime_experiment.py
 
 fixtures/sample_sessions.json
 fixtures/run_receipts.json
+fixtures/context_access_events.json
+fixtures/context_assets.json
+fixtures/context_budget_state.json
+fixtures/runtime_experiment_manifest.json
+fixtures/runtime_ab_receipts.json
+fixtures/runtime_context_events.json
 
 tests/test_model.py
 tests/test_real_model.py
 tests/test_task_economics.py
+tests/test_adaptive_control.py
+tests/test_runtime_experiment.py
 tests/test_docs.py
 
 .github/workflows/validate.yml
 ```
 
-## 11. 当前仍未解决的问题
+## 13. 当前仍未解决的问题
 
 1. 为当前 Hermes compressor 做 **exact-version replay**：固定 summary budget、tail mode、protected messages、prompt rebuild 与 provider transport。
 2. 保存 per-request billing trace，而不是只使用 session aggregate。
-3. 用真实任务 A/B 校准 quality loss，替换 `real_model.py` 中的 proxy retention curve。
-4. 将 tool/reacquisition/retry/latency 自动写入统一 run receipt，而不是只接受离线 JSON。
+3. 用 `runtime_experiment.py` 的 contract 真正执行 version-pinned held-out task A/B，并用真实 task outcome 校准 `real_model.py` 中的 proxy retention curve。
+4. 将 tool/reacquisition/retry/latency 与 L6 context events 自动采集进同一 run，而不是只接受离线 JSON。
 5. 研究按内容类型的 retention policy：路径、数字、时间、否定约束、用户意图、tool protocol、可重取 tool output 应区别处理。
 6. 对 L0 pricing snapshot 做定期刷新；快衰减信息不能永久写死在“定律”里。
 7. 在不同 provider/cache tier 上做 `cache × compression` factorial A/B，检验任务层是替代还是互补。

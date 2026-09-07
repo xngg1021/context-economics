@@ -44,6 +44,42 @@ class RuntimeExperimentContractTests(unittest.TestCase):
         self.assertTrue(report["runtime_design_structurally_ready"])
         self.assertEqual(report["causal_claim"], "not inferred by this validator")
 
+    def test_zero_success_report_serializes_without_nonstandard_infinity(self):
+        failed = [
+            rexp.ReceiptRecord(
+                replace(row.receipt, success=False, task_score=0.0),
+                row.explicit_fields,
+            )
+            for row in self.receipts
+        ]
+        report = rexp.build_joint_report(
+            self.manifest, failed, self.events, require_complete=True
+        )
+        safe = rexp._json_safe(report)
+        encoded = json.dumps(safe, allow_nan=False)
+        self.assertIn('"cost_per_success_usd": null', encoded)
+
+    def test_timestamp_order_and_timezone_are_validated(self):
+        broken = list(self.receipts)
+        broken[0] = rexp.ReceiptRecord(
+            replace(
+                broken[0].receipt,
+                started_at="2026-09-07T00:00:10+00:00",
+                ended_at="2026-09-07T00:00:00+00:00",
+            ),
+            broken[0].explicit_fields,
+        )
+        with self.assertRaises(rexp.ExperimentError):
+            rexp.build_joint_report(self.manifest, broken, self.events)
+
+        naive = list(self.receipts)
+        naive[0] = rexp.ReceiptRecord(
+            replace(naive[0].receipt, started_at="2026-09-07T00:00:00"),
+            naive[0].explicit_fields,
+        )
+        with self.assertRaises(rexp.ExperimentError):
+            rexp.build_joint_report(self.manifest, naive, self.events)
+
     def test_receipt_revision_mismatch_fails(self):
         broken = list(self.receipts)
         broken[0] = rexp.ReceiptRecord(
