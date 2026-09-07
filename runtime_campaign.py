@@ -8,6 +8,7 @@ import argparse
 import json
 import os
 import platform
+import shutil
 import subprocess
 from dataclasses import asdict
 from datetime import datetime, timezone
@@ -20,6 +21,7 @@ import runtime_experiment as rx
 KINDS = ('path', 'identifier', 'number', 'date', 'negation', 'constraint',
          'intent', 'tool_protocol', 'structured_id', 'retrievable_output',
          'reasoning_state', 'social_intent')
+SOURCE_ROOT = Path(__file__).resolve().parent
 
 
 def task_set(split, count):
@@ -47,14 +49,17 @@ def task_set(split, count):
 def identity():
     # Source inspection is not a provider operation. Git helpers/fsmonitor must
     # never inherit runtime provider credentials or injected Git configuration.
-    secrets = {'OPENAI_API_KEY','ANTHROPIC_API_KEY','GEMINI_API_KEY','GOOGLE_API_KEY','MOONSHOT_API_KEY'}
-    environment = {k:v for k,v in os.environ.items()
-                   if k.upper() not in secrets and not k.startswith('GIT_CONFIG_')}
+    environment = {'PATH':os.defpath, 'LC_ALL':'C'}
+    if os.name == 'nt' and 'SystemRoot' in os.environ:
+        environment['SystemRoot'] = os.environ['SystemRoot']
     environment.update(GIT_CONFIG_NOSYSTEM='1', GIT_CONFIG_GLOBAL=os.devnull,
                        GIT_OPTIONAL_LOCKS='0')
+    executable = shutil.which('git', path=os.defpath)
+    if not executable:
+        raise ValueError('trusted Git executable unavailable')
     def git(*args):return subprocess.check_output(
-        ['git','-c','core.fsmonitor=false','-c','core.untrackedCache=false',*args],
-        text=True,env=environment).strip()
+        [executable,'-c','core.fsmonitor=false','-c','core.untrackedCache=false',*args],
+        text=True,env=environment,cwd=SOURCE_ROOT).strip()
     if git('status','--porcelain','--untracked-files=normal'):
         raise ValueError('source checkout must be clean')
     return {'repository_commit':git('rev-parse','HEAD'),'repository_tree':git('rev-parse','HEAD^{tree}')}
@@ -78,7 +83,7 @@ def prepare(provider, revision, pricing_path, output, experiment_id, split, coun
     pins={**source,'provider':provider,'model_revision':revision,'split':split,
           'tasks_digest':pr.digest(tasks),'policy_digest':pr.digest(policy),
           'pricing_digest':pr.digest(snapshot),'scorer':'public-exact-match:v1',
-          'scorer_source_digest':pr.digest(Path('provider_runtime.py').read_text()),
+          'scorer_source_digest':pr.digest((SOURCE_ROOT/'provider_runtime.py').read_text()),
           'created_at':datetime.now(timezone.utc).isoformat(),
           'primary_metric':'cost_per_success','assignment':'counterbalanced',
           'gate_config':asdict(__import__('experiment_analysis').GateConfig(max_treatment_p95_wall_time_ms=30000)),
@@ -103,8 +108,17 @@ def run(path, output):
         raise ValueError('task/policy digest mismatch')
     if pr.digest(bundle['pricing_snapshot'])!=pins['pricing_digest']:
         raise ValueError('pricing digest mismatch')
-    if pins['scorer'] != 'public-exact-match:v1' or pins['scorer_source_digest'] != pr.digest(Path('provider_runtime.py').read_text()):
+    if pins['scorer'] != 'public-exact-match:v1' or pins['scorer_source_digest'] != pr.digest((SOURCE_ROOT/'provider_runtime.py').read_text()):
         raise ValueError('scorer implementation digest mismatch')
+    # A caller can recompute JSON digests. Enforce the bounded reviewed generator
+    # itself before any credentialed request, not just internal hash consistency.
+    tasks=bundle['tasks']
+    if not isinstance(tasks,list) or tasks != task_set(pins['split'],len(tasks)):
+        raise ValueError('tasks do not match bounded canonical generator')
+    if pins['split']=='holdout' and len(tasks)<24:
+        raise ValueError('formal holdout requires at least 24 pairs')
+    if bundle['policy'] != {'control':{'history_limit':None},'treatment':{'history_limit':4}}:
+        raise ValueError('policy does not match reviewed candidate')
     from pricing_refresh import check
     if check(bundle['pricing_snapshot'])['stale']:raise ValueError('pricing snapshot stale')
     provider=pins['provider']

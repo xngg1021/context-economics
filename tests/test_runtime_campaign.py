@@ -127,3 +127,40 @@ class CampaignTests(unittest.TestCase):
             self.assertEqual(json.loads((p/'failure.json').read_text())['phase'],'normalization_and_join')
             self.assertFalse((p/'acceptance.json').exists())
             self.assertNotIn('PRIVATE',''.join(f.read_text() for f in p.iterdir()))
+
+    def test_repository_overrides_cannot_mask_dirty_checkout(self):
+        import os, subprocess
+        with tempfile.TemporaryDirectory() as td:
+            dirty=Path(td)/'dirty';clean=Path(td)/'clean'
+            for root in (dirty,clean):
+                root.mkdir()
+                subprocess.run(['git','init','-q',str(root)],check=True)
+                (root/'tracked').write_text('original')
+                subprocess.run(['git','add','tracked'],cwd=root,check=True)
+                subprocess.run(['git','-c','user.name=Fixture','-c','user.email=fixture@example.invalid',
+                                'commit','-qm','fixture'],cwd=root,check=True)
+            (dirty/'tracked').write_text('changed')
+            with patch.object(rc,'SOURCE_ROOT',dirty),patch.dict(os.environ,{
+                'GIT_DIR':str(clean/'.git'),'GIT_WORK_TREE':str(clean),
+                'GIT_INDEX_FILE':str(clean/'.git/index'),'GIT_COMMON_DIR':str(clean/'.git')}):
+                with self.assertRaisesRegex(ValueError,'source checkout must be clean'):rc.identity()
+
+    def test_rehashed_tasks_and_policy_rejected_before_any_network(self):
+        import copy,provider_runtime as pr
+        from tests.test_provider_runtime import REV
+        source={'repository_commit':'a'*40,'repository_tree':'b'*40}
+        with tempfile.TemporaryDirectory() as td,patch.object(rc,'identity',return_value=source):
+            original=rc.prepare('openai',REV,'pricing/official-20260907-runtime-stage.json',
+                                Path(td)/'stage','bounded','smoke',2)
+            mutations=[lambda b:b['tasks'].extend([copy.deepcopy(b['tasks'][0]) for _ in range(39)]),
+                       lambda b:b['tasks'][0].update(input='arbitrary substituted workload'),
+                       lambda b:b['policy']['treatment'].update(history_limit=8)]
+            for change in mutations:
+                bundle=copy.deepcopy(original);bundle.pop('bundle_digest');change(bundle)
+                bundle['pins']['tasks_digest']=pr.digest(bundle['tasks'])
+                bundle['pins']['policy_digest']=pr.digest(bundle['policy'])
+                bundle['bundle_digest']=pr.digest(bundle)
+                p=Path(td)/'tampered.json';p.write_text(json.dumps(bundle))
+                with patch.dict('os.environ',{'OPENAI_API_KEY':'FIXTURE'}),patch.object(pr,'send') as send:
+                    with self.assertRaises(ValueError):rc.run(p,Path(td)/'runs')
+                    send.assert_not_called()
