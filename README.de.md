@@ -202,7 +202,7 @@ success_rate
 | [`CHANGELOG.md`](CHANGELOG.md) | Versionshistorie; alte Bau-/Review-/Debug-Chronologie gehört hierher |
 | [`VERSIONING.md`](VERSIONING.md) | Versionspolitik und Milestone Map |
 | [`PROVENANCE.md`](PROVENANCE.md) | Evidence Classes, Source Identity, Provenance |
-| [`FINAL-EVIDENCE-BOUNDARY.md`](FINAL-EVIDENCE-BOUNDARY.md) | Exakte 0.6.x Closeout-Grenze |
+| [`FINAL-EVIDENCE-BOUNDARY.md`](FINAL-EVIDENCE-BOUNDARY.md) | Aktuelle 0.6.x Evidence-Grenze und verbleibende empirische Lücken |
 | [`RUNTIME-INSTRUMENTATION.md`](RUNTIME-INSTRUMENTATION.md) | Canonical Runtime Telemetry |
 | [`RUNTIME-EXPERIMENT-CONTRACT.md`](RUNTIME-EXPERIMENT-CONTRACT.md) | Version-pinned Experiment Contract |
 | [`EXPERIMENT-ACCEPTANCE.md`](EXPERIMENT-ACCEPTANCE.md) | Statistical/Evidence Acceptance |
@@ -226,7 +226,7 @@ Normale Hermes Mid-Session-Memory-Writes persistieren auf Disk, schreiben aber d
 
 ## Validation
 
-Der 0.6.0 Engineering Milestone bestand nach dem Merge die vollständige Python-3.11-/3.13-Validation-Matrix. 0.6.1 ist ein Productization-Patch für Homepage, Versionshistorie und Lokalisierung und muss denselben CI-Gates genügen.
+Die unterstützte standard-library Engineering-Oberfläche wird auf Python 3.11 und 3.13 validiert. Konkrete CI-Identitäten, Review- und Acceptance-Chronologie pro Version stehen in [`CHANGELOG.md`](CHANGELOG.md), nicht auf der Homepage.
 
 ## Versionshistorie
 
