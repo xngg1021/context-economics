@@ -2,6 +2,8 @@
 
 ## Unreleased — PR #6 final evidence closeout
 
+- Disable Git replacement refs and export the checked tree; use fixed trusted Git installation and validate event payloads before aborted telemetry retention.
+
 - Bind the entire reviewed campaign via an independently supplied digest before credential selection/delivery, refusing rehashed model/pricing substitutions.
 
 - Fix startup P1 with trusted isolated bootstrap, credential-free source/blob validation and imports, reviewed-commit pin, and post-import pipe delivery; reject dirty source and ignored forged bytecode.

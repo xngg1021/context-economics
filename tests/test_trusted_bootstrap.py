@@ -51,8 +51,8 @@ class BootstrapTests(unittest.TestCase):
     def git(self,*args):
         return subprocess.check_output(['git',*args],cwd=self.source,text=True,stderr=subprocess.DEVNULL).strip()
 
-    def launch(self, isolated=True):
-        return subprocess.run([sys.executable,*(['-I','-S'] if isolated else []),str(LAUNCHER),
+    def launch(self, isolated=True, launcher=LAUNCHER):
+        return subprocess.run([sys.executable,*(['-I','-S'] if isolated else []),str(launcher),
             '--source',str(self.source),'--campaign',str(self.campaign),'--output-root',str(self.root/'out'),'--expected-commit',self.expected_commit,'--expected-campaign-digest',self.expected_campaign_digest],
             env=self.environment,cwd=self.source,capture_output=True,text=True)
 
@@ -113,3 +113,24 @@ class BootstrapTests(unittest.TestCase):
         result=self.launch()
         self.assertEqual(result.returncode,0,result.stdout+result.stderr)
         self.assertFalse(self.marker.exists())
+
+    def test_replacement_ref_added_after_tree_check_cannot_change_export(self):
+        (self.source/'provider_runtime.py').write_text(
+            f"from pathlib import Path\nPath({str(self.marker)!r}).write_text('POISON')\n")
+        self.git('add','provider_runtime.py')
+        self.git('-c','user.name=Fixture','-c','user.email=fixture@example.invalid','commit','-qm','untrusted replacement')
+        replacement=self.git('rev-parse','HEAD')
+        replacement_tree=self.git('rev-parse','HEAD^{tree}')
+        self.git('checkout','--detach',self.expected_commit)
+        launcher=self.root/'trusted-launcher.py'
+        code=LAUNCHER.read_text()
+        # Simulate concurrent .git mutation at the exact check/export boundary.
+        injection=("        subprocess.check_call(['/usr/bin/git','replace',commit,"+repr(replacement)+"],cwd=source,env=environment)\n"
+                   + "        subprocess.check_call(['/usr/bin/git','replace',tree,"+repr(replacement_tree)+"],cwd=source,env=environment)\n")
+        code=code.replace("        for item in read('ls-tree'",injection+"        for item in read('ls-tree'")
+        launcher.write_text(code)
+        result=self.launch(launcher=launcher)
+        self.assertEqual(result.returncode,0,result.stdout+result.stderr)
+        self.assertFalse(self.marker.exists())
+        self.assertIn(self.expected_commit,self.git('replace','-l').splitlines())
+        self.assertEqual(len(self.git('replace','-l').splitlines()),2)

@@ -72,7 +72,7 @@ def identity():
     if not executable or not Path(executable).is_file():
         raise ValueError('trusted Git executable unavailable')
     def git(*args):return subprocess.check_output(
-        [executable,'-c','core.fsmonitor=false','-c','core.untrackedCache=false',*args],
+        [executable,'--no-replace-objects','-c','core.fsmonitor=false','-c','core.untrackedCache=false',*args],
         text=True,env=environment,cwd=SOURCE_ROOT).strip()
     if git('status','--porcelain','--untracked-files=normal'):
         raise ValueError('source checkout must be clean')

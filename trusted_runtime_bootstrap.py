@@ -78,7 +78,7 @@ def launch(source, campaign_path, output_root, expected_commit, expected_campaig
     if not git or not Path(git).is_file():
         raise ValueError('trusted_git_unavailable')
     def read(*args):
-        return subprocess.check_output([git,'-c','core.fsmonitor=false',
+        return subprocess.check_output([git,'--no-replace-objects','-c','core.fsmonitor=false',
             '-c','core.untrackedCache=false',*args],cwd=source,env=environment,stderr=subprocess.DEVNULL)
     if read('status','--porcelain','--untracked-files=normal').strip():
         raise ValueError('dirty_source')
@@ -91,7 +91,7 @@ def launch(source, campaign_path, output_root, expected_commit, expected_campaig
         raise ValueError('source_identity_mismatch')
     with tempfile.TemporaryDirectory(prefix='context-verified-') as td:
         snapshot = Path(td)/'source';snapshot.mkdir(mode=0o700)
-        for item in read('ls-tree','-rz',commit).split(b'\0'):
+        for item in read('ls-tree','-rz',tree).split(b'\0'):
             if not item:continue
             meta, raw_path = item.split(b'\t',1)
             mode, kind, oid = meta.decode().split()
