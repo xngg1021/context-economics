@@ -110,6 +110,16 @@ class DocumentationContractTests(unittest.TestCase):
             "README.fr.md",
             "README.es.md",
         )
+        transient_release_phrases = (
+            "remain subject to the same repository CI before acceptance",
+            "同样必须通过仓库 CI 后才能接受",
+            "同樣必須通過倉庫 CI 才能接受",
+            "同じ CI を通過してから受理します",
+            "동일한 CI를 통과한 뒤 수용합니다",
+            "muss denselben CI-Gates genügen",
+            "doit passer les mêmes gates CI",
+            "debe superar los mismos gates CI",
+        )
         for name in names:
             text = (ROOT / name).read_text(encoding="utf-8")
             self.assertGreater(len(text), 6000, name)
@@ -122,6 +132,15 @@ class DocumentationContractTests(unittest.TestCase):
             self.assertIn("FINAL-EVIDENCE-BOUNDARY.md", text, name)
             for link in language_links:
                 self.assertIn(link, text, f"{name} missing {link}")
+            for phrase in transient_release_phrases:
+                self.assertNotIn(phrase, text, f"{name} contains transient release chronology")
+
+    def test_current_evidence_boundary_is_post_merge(self):
+        text = (ROOT / "FINAL-EVIDENCE-BOUNDARY.md").read_text(encoding="utf-8")
+        self.assertIn("2aef1e7043273637adff1453d22dafc83d5e0e94", text)
+        self.assertIn("34142898117", text)
+        self.assertNotIn("No merge claimed", text)
+        self.assertNotIn("must be checked in PR #6 before merge", text)
 
     def test_changelog_uses_versioned_release_sections(self):
         changelog = (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
