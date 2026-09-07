@@ -31,3 +31,11 @@ class CostLedgerTests(unittest.TestCase):
         with self.assertRaises(te.ReceiptError): te.RunReceipt.from_mapping(r)
         self.assertEqual(te.RunReceipt.from_mapping(dict(r,cost_ledger_version=1)).observed_cost_usd,1)
         self.assertEqual(te.RunReceipt.from_mapping(dict(r,cost_ledger_version=2,tool_cost_usd=1)).observed_cost_usd,1)
+
+    def test_direct_constructor_requires_explicit_classified_ledger_version(self):
+        with self.assertRaises(te.ReceiptError):
+            te.RunReceipt('r','t','p',True,reacquisition_cost_usd=3,retry_cost_usd=2)
+        legacy=te.RunReceipt('r','t','p',True,cost_ledger_version=1,reacquisition_cost_usd=3,retry_cost_usd=2)
+        self.assertEqual(legacy.observed_cost_usd,5)
+        modern=te.RunReceipt('r','t','p',True,cost_ledger_version=2,tool_cost_usd=3,reacquisition_cost_usd=3,retry_cost_usd=2)
+        self.assertEqual(modern.observed_cost_usd,3)

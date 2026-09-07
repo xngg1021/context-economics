@@ -52,8 +52,8 @@ costs. Runtime normalization always emits v2.
 Metadata validation recursively copies JSON mappings/lists/tuples, rejecting
 case-insensitive explicit private keys with hyphens/underscores normalized.
 Limits are 16 levels, 4096 nodes, and 64 KiB per payload. Values must be JSON-safe
-and finite. Returned bundles do not alias collector state. This is a forbidden-key
-policy, not semantic detection of secrets hidden under arbitrary safe names;
+and finite. Returned bundles do not alias collector state. Provider metadata additionally uses the recursive allowlist below. This is
+not semantic detection of secrets hidden under arbitrary safe names;
 adapters must still emit redacted identifiers and metadata.
 
 Tool categories are retrieval/filesystem/search/database/web/compute/action/other.
@@ -84,3 +84,14 @@ Review expanded the explicit private-key policy to standard proxy authorization,
 password/passwd/pwd, client secret, session/id/security tokens, credentials,
 private/secret/access keys and common AWS credential fields. Hyphen/underscore
 and case variants are rejected at every mapping/list depth.
+
+
+Second review closes direct-constructor migration and metadata extension gaps:
+RunReceipt's Python constructor also rejects unversioned nonzero classification
+costs, so legacy callers must explicitly choose v1 or migrate to v2. Zero-cost
+old callers continue to work. Provider metadata now accepts only route, region,
+response_id, service_tier, cache_hint, type and cache_write_usage_available at
+every nesting level. Unknown keys fail, including future credential spellings.
+Extending this namespace requires a reviewed schema change; the adapter must
+not pass arbitrary provider-native metadata through. Common compound auth/api/
+bearer/oauth token names are also explicitly denied in generic payload mappings.

@@ -100,7 +100,7 @@ class RunReceipt:
     provider_bill_usd: float = 0.0
     provider_bill_source: str | None = None
     billing_status: str | None = None
-    cost_ledger_version: int = 2
+    cost_ledger_version: int | None = None
     external_cost_usd: float = 0.0
     tool_cost_usd: float = 0.0
     reacquisition_cost_usd: float = 0.0
@@ -121,6 +121,15 @@ class RunReceipt:
     scorer_version: str | None = None
     scoring_provenance: str | None = None
     notes: tuple[str, ...] = ()
+
+    def __post_init__(self):
+        version = self.cost_ledger_version
+        if version is None:
+            if self.reacquisition_cost_usd != 0 or self.retry_cost_usd != 0:
+                raise ReceiptError("ambiguous classified costs: explicitly set cost_ledger_version=1 for legacy additive or migrate to 2")
+            object.__setattr__(self, "cost_ledger_version", 2)
+        elif type(version) is not int or version not in {1, 2}:
+            raise ReceiptError("cost_ledger_version must be 1 or 2")
 
     @property
     def observed_cost_usd(self) -> float:

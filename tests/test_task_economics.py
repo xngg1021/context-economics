@@ -111,7 +111,7 @@ class TaskEconomicsTests(unittest.TestCase):
         rows = [
             te.RunReceipt("c", "task", "control", True, provider_bill_usd=1.0, reacquisition_calls=0),
             te.RunReceipt("t", "task", "treatment", True, provider_bill_usd=0.8,
-                          external_cost_usd=0.3, reacquisition_cost_usd=0.3, retrieval_calls=2, reacquisition_calls=2),
+                          cost_ledger_version=2, external_cost_usd=0.3, reacquisition_cost_usd=0.3, retrieval_calls=2, reacquisition_calls=2),
         ]
         delta = te.paired_task_deltas(rows, "control", "treatment")[0]
         self.assertAlmostEqual(delta["cost_delta_usd"], 0.1)

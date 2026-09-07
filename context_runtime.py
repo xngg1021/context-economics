@@ -32,8 +32,13 @@ SECRET_KEYS = {
     "rawcompletion", "prompt", "completion",
     "proxyauthorization", "password", "passwd", "pwd", "clientsecret",
     "sessiontoken", "sessionid", "idtoken", "token", "secret", "credential",
+    "authtoken", "apitoken", "bearertoken", "oauthtoken",
     "credentials", "privatekey", "secretkey", "accesskey", "accesskeyid",
     "secretaccesskey", "awsaccesskeyid", "awssecretaccesskey", "awssecuritytoken",
+}
+SAFE_PROVIDER_METADATA_KEYS = {
+    "route", "region", "responseid", "servicetier", "cachehint", "type",
+    "cachewriteusageavailable",
 }
 MAX_METADATA_DEPTH = 16
 MAX_METADATA_BYTES = 65536
@@ -92,7 +97,7 @@ def _mapping(value: object, name: str) -> dict[str, object]:
     if not isinstance(value, Mapping):
         raise TelemetryError(f"{name} must be an object")
     nodes = 0
-    def visit(item, depth=0):
+    def visit(item, depth=0, provider_metadata=False):
         nonlocal nodes
         nodes += 1
         if depth > MAX_METADATA_DEPTH or nodes > MAX_METADATA_NODES:
@@ -102,12 +107,15 @@ def _mapping(value: object, name: str) -> dict[str, object]:
             for key, child in item.items():
                 if not isinstance(key, str):
                     raise TelemetryError("metadata keys must be strings")
-                if key.lower().replace("-", "").replace("_", "") in SECRET_KEYS:
+                normalized_key = key.lower().replace("-", "").replace("_", "")
+                if normalized_key in SECRET_KEYS:
                     raise TelemetryError("metadata contains forbidden private field")
-                out[key] = visit(child, depth+1)
+                if provider_metadata and normalized_key not in SAFE_PROVIDER_METADATA_KEYS:
+                    raise TelemetryError("provider metadata key is not allowlisted")
+                out[key] = visit(child, depth+1, provider_metadata or normalized_key == "providermetadata")
             return out
         if isinstance(item, (list, tuple)):
-            return [visit(child, depth+1) for child in item]
+            return [visit(child, depth+1, provider_metadata) for child in item]
         if isinstance(item, str) and len(item) > MAX_METADATA_BYTES:
             raise TelemetryError("metadata exceeds size limit")
         if item is None or type(item) in (str, bool, int):
@@ -115,7 +123,7 @@ def _mapping(value: object, name: str) -> dict[str, object]:
         if type(item) is float and math.isfinite(item):
             return item
         raise TelemetryError("metadata must contain finite JSON-safe values")
-    out = visit(value)
+    out = visit(value, provider_metadata=name == "provider_metadata")
     try:
         size = len(json.dumps(out, allow_nan=False).encode("utf-8"))
     except (ValueError, UnicodeError) as exc:

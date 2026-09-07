@@ -6,7 +6,7 @@ from tests.test_cost_ledger import tool
 
 class PrivacyRetrievalTests(unittest.TestCase):
     def test_recursive_forbidden_fields(self):
-        for key in ('Authorization','AUTHORIZATION','authorization_header','api_key','apikey','x-api-key','cookie','set-cookie','access_token','refresh_token','account_id','raw_prompt','raw_completion','prompt','completion','Proxy-Authorization','password','client_secret','session_token','session-id','id_token','token','credentials','private_key','aws_secret_access_key'):
+        for key in ('Authorization','AUTHORIZATION','authorization_header','api_key','apikey','x-api-key','cookie','set-cookie','access_token','refresh_token','account_id','raw_prompt','raw_completion','prompt','completion','Proxy-Authorization','password','client_secret','session_token','session-id','id_token','token','credentials','private_key','aws_secret_access_key','auth_token','api_token','bearer_token','oauth_token'):
             for wrap in (lambda x:x,lambda x:{'headers':x},lambda x:{'request':[x]},lambda x:{'a':[{'b':(x,)}]}):
                 with self.subTest(key=key,wrap=wrap):
                     r=request();r['payload']['provider_metadata']=wrap({key:'SECRET'})
@@ -23,8 +23,8 @@ class PrivacyRetrievalTests(unittest.TestCase):
         self.assertNotIn('SECRET',str(c.bundle()))
     def test_depth_size_nodes_and_json_values(self):
         deep={}
-        for _ in range(20):deep={'a':deep}
-        for metadata in (deep,{'a':'x'*65537},{'a':[0]*4097},{'a':float('nan')},{'a':object()}):
+        for _ in range(20):deep={'cache_hint':deep}
+        for metadata in (deep,{'route':'x'*65537},{'route':[0]*4097},{'route':float('nan')},{'route':object()}):
             r=request();r['payload']['provider_metadata']=metadata
             with self.assertRaises(rt.TelemetryError):rt.Envelope.parse(r)
     def test_retrieval_roundtrip(self):
@@ -36,3 +36,8 @@ class PrivacyRetrievalTests(unittest.TestCase):
             with self.assertRaises(rt.TelemetryError):rt.normalize([rt.Envelope.parse(x) for x in (request(),row,outcome())])
     def test_duplicate_event_normalize_fails(self):
         with self.assertRaises(rt.TelemetryError):rt.normalize([rt.Envelope.parse(x) for x in (request(),request(),outcome())])
+
+    def test_provider_metadata_recursive_allowlist_rejects_unknown_keys(self):
+        for metadata in ({'custom_credential':'SECRET'},{'cache_hint':[{'custom_key':'SECRET'}]}):
+            r=request();r['payload']['provider_metadata']=metadata
+            with self.assertRaises(rt.TelemetryError):rt.Collector(rt.CanonicalAdapter()).capture(r)
