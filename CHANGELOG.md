@@ -1,5 +1,21 @@
 # Changelog
 
+## Unreleased — L6 Adaptive Context Control
+
+### L5 accounting hardening
+
+- receipt ingestion now rejects ambiguous booleans, unknown fields, duplicate run IDs, non-finite/negative accounting fields, impossible cached-token counts and reacquisition counts above retrieval counts;
+- policy aggregation now reports token/cache totals, task scores, latency percentiles and failure classes;
+- paired treatment/control output now exposes pairing coverage plus missing/duplicate-arm exclusions.
+
+### L6 control plane
+
+- adds `adaptive_control.py` with generic `context_hit / soft_miss / hard_miss / stale_hit` telemetry;
+- adds evidence-gated admission/residency with explicit counterfactual-value handling and bounded exact 0/1 packing;
+- adds locator-token economics, co-demand speculative prefetch with anti-self-training, bounded vector context-budget feedback, context mutation amplification and immutable shared-base economics;
+- adds synthetic L6 fixtures, contract tests and CI smoke coverage;
+- preserves the hard boundary between Context Economics `L0-L6` Layers and THM `T0-T3` memory Tiers; no production policy mutation is enabled.
+
 ## Unreleased — 2026-09-07 hardening
 
 Base: `main@53d1e9c84025a76a0e6169ca49afdcf68926fc4a`

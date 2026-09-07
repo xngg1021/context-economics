@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "note": "Synthetic L6 context-access trace; no provider, repository, or private user data.",
+  "events": [
+    {"event_id":"t1:repo","task_id":"task-1","kind":"context_hit","asset_id":"repo-map"},
+    {"event_id":"t1:pay","task_id":"task-1","kind":"soft_miss","asset_id":"payment-file","avoidable":true,"extra_cost_units":8,"extra_tokens":420,"extra_tool_calls":1,"extra_latency_ms":35},
+    {"event_id":"t1:test","task_id":"task-1","kind":"hard_miss","asset_id":"payment-tests","avoidable":true,"extra_cost_units":14,"extra_tokens":700,"extra_tool_calls":2,"extra_latency_ms":90},
+    {"event_id":"t2:repo","task_id":"task-2","kind":"context_hit","asset_id":"repo-map"},
+    {"event_id":"t2:pay","task_id":"task-2","kind":"soft_miss","asset_id":"payment-file","avoidable":true,"extra_cost_units":9,"extra_tokens":450,"extra_tool_calls":1,"extra_latency_ms":40},
+    {"event_id":"t2:test","task_id":"task-2","kind":"hard_miss","asset_id":"payment-tests","avoidable":true,"extra_cost_units":13,"extra_tokens":680,"extra_tool_calls":2,"extra_latency_ms":85},
+    {"event_id":"t3:repo","task_id":"task-3","kind":"context_hit","asset_id":"repo-map"},
+    {"event_id":"t3:pay","task_id":"task-3","kind":"soft_miss","asset_id":"payment-file","avoidable":true,"extra_cost_units":7,"extra_tokens":390,"extra_tool_calls":1,"extra_latency_ms":30},
+    {"event_id":"t3:test","task_id":"task-3","kind":"context_hit","asset_id":"payment-tests"},
+    {"event_id":"t3:stale","task_id":"task-3","kind":"stale_hit","asset_id":"stale-config","extra_cost_units":12},
+    {"event_id":"t4:repo","task_id":"task-4","kind":"context_hit","asset_id":"repo-map"},
+    {"event_id":"t4:test","task_id":"task-4","kind":"context_hit","asset_id":"payment-tests"},
+    {"event_id":"t4:stale","task_id":"task-4","kind":"stale_hit","asset_id":"stale-config","extra_cost_units":15},
+    {"event_id":"t5:planned","task_id":"planned-only","kind":"planned_retrieval","asset_id":"payment-file"},
+    {"event_id":"t6:prefetch","task_id":"prefetch-only","kind":"prefetch","asset_id":"payment-tests","used":false,"avoided_miss":false,"prefetched_units":24,"extra_cost_units":0.4}
+  ]
+}

@@ -10,6 +10,8 @@ Hardening base:
 - base branch: `main`
 - base commit: `53d1e9c84025a76a0e6169ca49afdcf68926fc4a`
 - hardening branch: `chat/context-economics-hardening-20260907`
+- merged hardening commit: `1f7a71b6ab930183c5f05c40065149d3839a6e23`
+- L6 successor branch: `chat/context-l6-adaptive-control-20260907`
 
 The hardening is forward-only: no rebase, reset or force-push is required.
 
@@ -84,6 +86,22 @@ See `pricing-snapshot.json`.
 
 These are used for the claims explicitly described in `README.md` and `L5-task-economics.md`; their reported numbers remain scoped to their own experimental settings.
 
+## L6 implementation evidence boundary
+
+`adaptive_control.py` is a deterministic standard-library **reference/control implementation**. Its public fixtures are synthetic. Current claims are limited to analytic, simulation and contract behavior:
+
+- event/schema validation;
+- miss taxonomy and explicit avoidability;
+- evidence-gated admission/residency;
+- locator/prefetch/budget arithmetic;
+- bounded exact packing;
+- anti-self-training prefetch semantics;
+- mutation/share accounting.
+
+It has not yet been promoted to `runtime-A/B` or `task-economic` evidence. In particular, the repository does not claim that any proposed context budget, prefetch or admission policy improves a real provider/harness workload until version-pinned held-out tasks produce the corresponding L5 receipts.
+
+Context Economics `L0-L6` and THM `T0-T3` are independent taxonomies. Cross-repository measurements may be exchanged, but neither hierarchy is rewritten as the other.
+
 ## Reproduction
 
 Public/portable:
@@ -92,6 +110,9 @@ Public/portable:
 python -m unittest discover -s tests -v
 python model.py
 python real_model.py --fixture fixtures/sample_sessions.json
+python task_economics.py --receipts fixtures/run_receipts.json --control no-compression --treatment aggressive-compression
+python adaptive_control.py telemetry --events fixtures/context_access_events.json
+python adaptive_control.py budget --state fixtures/context_budget_state.json
 ```
 
 Private trace replay:
