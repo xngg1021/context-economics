@@ -1,3 +1,4 @@
+import hashlib
 import importlib.util
 import json
 import marshal
@@ -35,16 +36,23 @@ class BootstrapTests(unittest.TestCase):
         self.git('-c','user.name=Fixture','-c','user.email=fixture@example.invalid','commit','-qm','fixture')
         self.campaign=self.root/'campaign.json'
         self.expected_commit=self.git('rev-parse','HEAD')
-        self.campaign.write_text(json.dumps({'pins':{'provider':'openai',
+        self.authorize_campaign({'pins':{'provider':'openai',
             'repository_commit':self.git('rev-parse','HEAD'),
-            'repository_tree':self.git('rev-parse','HEAD^{tree}')}}))
+            'repository_tree':self.git('rev-parse','HEAD^{tree}')}})
+
+    def authorize_campaign(self,bundle):
+        bundle.pop('bundle_digest',None)
+        self.expected_campaign_digest=hashlib.sha256(json.dumps(bundle,sort_keys=True,separators=(',', ':')).encode()).hexdigest()
+        bundle['bundle_digest']=self.expected_campaign_digest
+        self.campaign.write_text(json.dumps(bundle))
+
 
     def git(self,*args):
         return subprocess.check_output(['git',*args],cwd=self.source,text=True,stderr=subprocess.DEVNULL).strip()
 
     def launch(self, isolated=True):
         return subprocess.run([sys.executable,*(['-I','-S'] if isolated else []),str(LAUNCHER),
-            '--source',str(self.source),'--campaign',str(self.campaign),'--output-root',str(self.root/'out'),'--expected-commit',self.expected_commit],
+            '--source',str(self.source),'--campaign',str(self.campaign),'--output-root',str(self.root/'out'),'--expected-commit',self.expected_commit,'--expected-campaign-digest',self.expected_campaign_digest],
             env=self.environment,cwd=self.source,capture_output=True,text=True)
 
     def test_ignored_forged_pyc_is_not_loaded_and_secret_arrives_after_import(self):
@@ -80,5 +88,16 @@ class BootstrapTests(unittest.TestCase):
         self.git('-c','user.name=Fixture','-c','user.email=fixture@example.invalid','commit','-qm','unreviewed')
         bundle=json.loads(self.campaign.read_text())
         bundle['pins'].update(repository_commit=self.git('rev-parse','HEAD'),repository_tree=self.git('rev-parse','HEAD^{tree}'))
-        self.campaign.write_text(json.dumps(bundle))
+        self.authorize_campaign(bundle)
         self.assertEqual(self.launch().returncode,2)
+
+    def test_rehashed_campaign_cannot_change_authorized_model_or_price(self):
+        authorized=self.expected_campaign_digest
+        bundle=json.loads(self.campaign.read_text())
+        bundle['pins']['model_revision']='unauthorized-expensive-2026-09-07'
+        bundle['pricing_snapshot']={'input':0,'source':'https://openai.com'}
+        self.authorize_campaign(bundle)
+        self.expected_campaign_digest=authorized
+        result=self.launch()
+        self.assertEqual(result.returncode,2)
+        self.assertNotIn('FIXTURE-PRIVATE',result.stdout+result.stderr)

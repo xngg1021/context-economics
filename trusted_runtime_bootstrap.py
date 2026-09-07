@@ -46,13 +46,21 @@ raise SystemExit(campaign.main(['run','--campaign',sys.argv[4],'--output-root',s
 '''
 
 
-def launch(source, campaign_path, output_root, expected_commit):
+def launch(source, campaign_path, output_root, expected_commit, expected_campaign_digest):
     if not sys.flags.isolated or not sys.flags.no_site:
         raise ValueError('isolated_interpreter_required')
     source = Path(source).resolve()
     campaign_path = Path(campaign_path).resolve()
     output_root = Path(output_root).resolve()
     bundle = json.loads(campaign_path.read_text())
+    frozen_fields = dict(bundle)
+    claimed = frozen_fields.pop('bundle_digest')
+    actual = hashlib.sha256(json.dumps(frozen_fields,sort_keys=True,separators=(',', ':'),
+                                      allow_nan=False).encode()).hexdigest()
+    # Independent launch pin covers model/provider/prices/tasks/gates, not just
+    # source identity. Never derive this expected value from mutable campaign JSON.
+    if actual != claimed or actual != expected_campaign_digest:
+        raise ValueError('authorized_campaign_digest_mismatch')
     provider = bundle['pins']['provider']
     credential_name = {'openai':'OPENAI_API_KEY','anthropic':'ANTHROPIC_API_KEY'}[provider]
     if not _SECRETS.get(credential_name):
@@ -114,10 +122,11 @@ def main():
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument('--source',required=True);p.add_argument('--campaign',required=True)
     p.add_argument('--expected-commit',required=True,help='independently reviewed source SHA; never derive from campaign')
+    p.add_argument('--expected-campaign-digest',required=True,help='digest recorded in trusted campaign review/launch config')
     p.add_argument('--output-root',default='artifacts')
     args=p.parse_args()
     try:
-        result=launch(args.source,args.campaign,args.output_root,args.expected_commit)
+        result=launch(args.source,args.campaign,args.output_root,args.expected_commit,args.expected_campaign_digest)
     except Exception:
         result={'status':'BLOCKED','operation':'run','evidence_upgraded':False}
     finally:

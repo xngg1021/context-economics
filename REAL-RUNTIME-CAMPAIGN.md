@@ -50,6 +50,7 @@ python runtime_campaign.py prepare --provider openai \
   --split smoke --count 2
 python -I -S /trusted/context/trusted_runtime_bootstrap.py \
   --source /path/to/clean/context-economics --expected-commit REVIEWED_COMMIT_SHA \
+  --expected-campaign-digest REVIEWED_CAMPAIGN_DIGEST \
   --campaign artifacts/staged-smoke/campaign.json --output-root artifacts
 ```
 
@@ -57,7 +58,11 @@ Prepare in a credential-free process. Install/copy the reviewed
 `trusted_runtime_bootstrap.py` into a trusted location independent of the mutable
 checkout; the Python installation and this minimal launcher are the startup
 trust boundary. `--expected-commit` must be independently reviewed/verified,
-not read from caller-controlled campaign JSON. Always use `python -I -S`.
+not read from caller-controlled campaign JSON. Likewise, the required
+`--expected-campaign-digest` comes from the trusted preparation/review record,
+not from the mutable file at execution time. It binds provider/model/pricing,
+tasks, policy and gates before the selected credential is accessed or delivered.
+Always use `python -I -S`.
 The launcher removes provider secrets from its environment, validates Git/source
 without them, copies exact Git blobs into a fresh private snapshot (no ignored
 bytecode), imports the snapshot in a secret-free isolated child, then sends only
