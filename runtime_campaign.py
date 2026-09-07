@@ -45,7 +45,16 @@ def task_set(split, count):
 
 
 def identity():
-    def git(*args):return subprocess.check_output(['git',*args],text=True).strip()
+    # Source inspection is not a provider operation. Git helpers/fsmonitor must
+    # never inherit runtime provider credentials or injected Git configuration.
+    secrets = {'OPENAI_API_KEY','ANTHROPIC_API_KEY','GEMINI_API_KEY','GOOGLE_API_KEY','MOONSHOT_API_KEY'}
+    environment = {k:v for k,v in os.environ.items()
+                   if k.upper() not in secrets and not k.startswith('GIT_CONFIG_')}
+    environment.update(GIT_CONFIG_NOSYSTEM='1', GIT_CONFIG_GLOBAL=os.devnull,
+                       GIT_OPTIONAL_LOCKS='0')
+    def git(*args):return subprocess.check_output(
+        ['git','-c','core.fsmonitor=false','-c','core.untrackedCache=false',*args],
+        text=True,env=environment).strip()
     if git('status','--porcelain','--untracked-files=normal'):
         raise ValueError('source checkout must be clean')
     return {'repository_commit':git('rev-parse','HEAD'),'repository_tree':git('rev-parse','HEAD^{tree}')}

@@ -98,3 +98,18 @@ class CampaignTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as td, patch.object(rc,'identity',return_value=source):
             with self.assertRaisesRegex(ValueError,'24 pairs'):
                 rc.prepare('openai','gpt-4.1-mini-2025-04-14','pricing/official-20260907-runtime-stage.json',td,'too-small','holdout',20)
+
+    def test_source_git_never_inherits_provider_credentials(self):
+        import os
+        keys=['OPENAI_API_KEY','ANTHROPIC_API_KEY','GEMINI_API_KEY','GOOGLE_API_KEY','MOONSHOT_API_KEY']
+        with patch.dict(os.environ,{**{k:'TEST-SECRET' for k in keys},'GIT_CONFIG_COUNT':'1'}):
+            with patch.object(rc.subprocess,'check_output',side_effect=['','a'*40,'b'*40]) as git:
+                self.assertEqual(rc.identity()['repository_commit'],'a'*40)
+                for call in git.call_args_list:
+                    env=call.kwargs['env']
+                    self.assertTrue(all(k not in env for k in keys))
+                    self.assertNotIn('GIT_CONFIG_COUNT',env)
+                    self.assertIn('core.fsmonitor=false',call.args[0])
+                    self.assertEqual(env['GIT_CONFIG_NOSYSTEM'],'1')
+                    self.assertEqual(env['GIT_CONFIG_GLOBAL'],os.devnull)
+            self.assertTrue(all(os.environ[k]=='TEST-SECRET' for k in keys))
