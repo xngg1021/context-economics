@@ -31,7 +31,8 @@ class AnalysisTests(unittest.TestCase):
 
     def test_gate_passes_and_never_auto_enables(self):
         out = ea.acceptance_gate(self.rows, {"t": []}, "c", "t", ea.GateConfig())
-        self.assertTrue(out["candidate_for_promotion"])
+        self.assertTrue(out["performance_candidate"])
+        self.assertFalse(out["candidate_for_promotion"])
         self.assertIn("no-auto-enable", out["scope"])
 
     def test_zero_success_fails_cost_gate(self):

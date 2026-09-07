@@ -27,3 +27,21 @@ Evidence progression remains explicit:
 | runtime-A/B | Pinned arms executed in a runtime |
 | task-economic | Outcome, observed bill and trajectory jointly support the decision |
 
+
+## Correctness recovery contract
+
+All performance aggregates use the single exact unique paired cohort, including
+context metrics filtered to paired runs when wrapped events are available.
+Missing and duplicate arms never improve performance gates. Coverage is an
+eligibility check, not a performance metric; manifest tasks missing both arms
+still count in its denominator. Zero pairs cannot pass.
+
+`performance_candidate` reports numerical checks. `evidence_eligible` separately
+requires a valid pinned manifest/join, sufficient paired coverage, scorer
+identity/version/provenance, v2 billing provenance, declared runtime-A/B or
+task-economic evidence, explicit real-provider origin and held-out task-set ref.
+`candidate_for_promotion` is their conjunction. Default billing must be observed;
+only explicit `allow_estimated=True` admits estimates (reported in output).
+Synthetic/loopback evidence remains shadow-only. Eligibility is structural
+validation of supplied provenance, not authentication of the caller's claims or
+proof of statistical superiority. No production mutation is performed.

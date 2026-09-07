@@ -371,6 +371,7 @@ def paired_task_report(
         by_task.setdefault(row.task_id, {}).setdefault(row.policy_id, []).append(row)
 
     deltas: list[dict] = []
+    paired_run_ids: list[str] = []
     omitted_missing_arm: list[str] = []
     omitted_duplicate_arm: list[str] = []
 
@@ -385,6 +386,7 @@ def paired_task_report(
             continue
 
         c, t = control[0], treatment[0]
+        paired_run_ids.extend((c.run_id, t.run_id))
         deltas.append(
             {
                 "task_id": task_id,
@@ -437,8 +439,21 @@ def paired_task_report(
         ),
         "omitted_missing_arm": omitted_missing_arm,
         "omitted_duplicate_arm": omitted_duplicate_arm,
+        "paired_run_ids": paired_run_ids,
+        "paired_task_ids": [d["task_id"] for d in deltas],
         "deltas": deltas,
     }
+
+
+def extract_exact_pairs(receipts, control, treatment):
+    """Single pairing authority for aggregate gates and statistics."""
+    rows = list(receipts)
+    ids = [r.run_id for r in rows]
+    if len(ids) != len(set(ids)):
+        raise ReceiptError("duplicate run_id")
+    report = paired_task_report(rows, control, treatment)
+    paired_ids = set(report["paired_run_ids"])
+    return report, [r for r in rows if r.run_id in paired_ids]
 
 
 def paired_task_deltas(

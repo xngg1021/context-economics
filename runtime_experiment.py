@@ -21,7 +21,7 @@ import adaptive_control as ac
 import task_economics as te
 
 
-EVIDENCE_CLASSES = {"synthetic-contract", "trace-replay", "runtime-A/B"}
+EVIDENCE_CLASSES = {"synthetic-contract", "trace-replay", "runtime-A/B", "task-economic"}
 ASSIGNMENT_METHODS = {"paired-fixed", "counterbalanced", "randomized", "observational"}
 REQUIRED_RECEIPT_FIELDS = {
     "run_id",
