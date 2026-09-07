@@ -50,10 +50,11 @@ jobs:
           python adaptive_control.py prefetch --events fixtures/context_access_events.json --catalog fixtures/context_assets.json --seed repo-map --budget 4 --min-seed-demands 3 --min-joint-tasks 2
           python adaptive_control.py budget --state fixtures/context_budget_state.json
           git diff --check
-      - name: Commit generated docs and CI
+      - name: Commit generated docs
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add README.md CHANGELOG.md PROVENANCE.md L5-task-economics.md tests/test_docs.py .github/workflows/validate.yml
+          git checkout -- .github/workflows/validate.yml
+          git add README.md CHANGELOG.md PROVENANCE.md L5-task-economics.md tests/test_docs.py
           git commit -m 'docs: wire L6 control plane into current repository surface'
           git push origin HEAD:chat/context-l6-adaptive-control-20260907
