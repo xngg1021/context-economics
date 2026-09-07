@@ -123,42 +123,58 @@ def run_experiment(manifest: rx.ExperimentManifest, tasks: Sequence[Mapping[str,
                     'files':{name:hashlib.sha256(value.encode()).hexdigest() for name,value in rendered.items()}})+'\n'
                 publish_artifacts(output, rendered)
                 raise RunnerError('executor failed; immutable incomplete campaign recorded') from None
-    raw = collector.bundle()
-    normalized = rt.normalize([rt.Envelope.parse(row) for row in raw['events']])
-    receipt_rows = normalized['l5_receipts']['runs']
-    receipts = [te.RunReceipt.from_mapping(row) for row in receipt_rows]
-    records = [rx.ReceiptRecord(receipt, frozenset(row)) for receipt,row in zip(receipts,receipt_rows)]
-    events = [rx.ExperimentContextEvent.from_mapping(row) for row in normalized['l6_context_events']['events']]
-    joint = rx.build_joint_report(manifest, records, events, require_complete=True)
-    statistics = ea.paired_statistics(receipts, *arms, seed=seed)
-    acceptance = ea.acceptance_gate(receipts, {}, *arms, config or ea.GateConfig(),
-                                   manifest=manifest, experiment_events=events,
-                                   target=target, allow_estimated=allow_estimated,
-                                   evidence_origin=origin, held_out_task_set_ref=held_out_task_set_ref)
-    provenance = {**raw_manifest, 'evidence_origin':origin, 'seed':seed,
-                  'held_out_task_set_ref':held_out_task_set_ref,
-                  'scorers':sorted({(r.scorer_id,r.scorer_version,r.scoring_provenance) for r in receipts}),
-                  'billing_evidence':sorted({(r.billing_status,r.provider_bill_source) for r in receipts}),
-                  'time_boundary':'request wall time measured; non-streaming TTFT unknown',
-                  'public_evidence':'simulation / contract E2E' if origin == 'loopback' else 'caller-declared; not independently authenticated'}
-    artifacts = {'manifest.json':{'schema_version':1,'manifest':raw_manifest},
-                 'schedule.json':{'assignment_method':manifest.assignment_method,'tasks':schedule},
-                 'raw-telemetry.json':raw, 'normalized.json':normalized,
-                 'l5-receipts.json':normalized['l5_receipts'],
-                 'l6-events.json':normalized['l6_context_events'],
-                 'joint-report.json':joint, 'paired-statistics.json':statistics,
-                 'acceptance.json':acceptance, 'provenance.json':provenance}
-    artifacts.update(supplemental_artifacts)
-    # Validate serialization before creating a finished directory. No task text or answers persisted.
-    rendered = {name:json.dumps(te._json_safe(value),indent=2,ensure_ascii=False,allow_nan=False)+'\n'
-                for name,value in artifacts.items()}
-    if supplemental_artifacts:
-        rendered['fingerprints.json'] = json.dumps({
-            'algorithm': 'sha256', 'scope': 'all other files; fingerprint index excluded',
-            'files': {name:hashlib.sha256(content.encode()).hexdigest() for name,content in rendered.items()}
-        }, indent=2)+'\n'
-    publish_artifacts(output, rendered)
-    return output
+    phase = 'normalization_and_join'
+    try:
+        raw = collector.bundle()
+        normalized = rt.normalize([rt.Envelope.parse(row) for row in raw['events']])
+        receipt_rows = normalized['l5_receipts']['runs']
+        receipts = [te.RunReceipt.from_mapping(row) for row in receipt_rows]
+        records = [rx.ReceiptRecord(receipt, frozenset(row)) for receipt,row in zip(receipts,receipt_rows)]
+        events = [rx.ExperimentContextEvent.from_mapping(row) for row in normalized['l6_context_events']['events']]
+        joint = rx.build_joint_report(manifest, records, events, require_complete=True)
+        statistics = ea.paired_statistics(receipts, *arms, seed=seed)
+        acceptance = ea.acceptance_gate(receipts, {}, *arms, config or ea.GateConfig(),
+                                       manifest=manifest, experiment_events=events,
+                                       target=target, allow_estimated=allow_estimated,
+                                       evidence_origin=origin, held_out_task_set_ref=held_out_task_set_ref)
+        provenance = {**raw_manifest, 'evidence_origin':origin, 'seed':seed,
+                      'held_out_task_set_ref':held_out_task_set_ref,
+                      'scorers':sorted({(r.scorer_id,r.scorer_version,r.scoring_provenance) for r in receipts}),
+                      'billing_evidence':sorted({(r.billing_status,r.provider_bill_source) for r in receipts}),
+                      'time_boundary':'request wall time measured; non-streaming TTFT unknown',
+                      'public_evidence':'simulation / contract E2E' if origin == 'loopback' else 'caller-declared; not independently authenticated'}
+        artifacts = {'manifest.json':{'schema_version':1,'manifest':raw_manifest},
+                     'schedule.json':{'assignment_method':manifest.assignment_method,'tasks':schedule},
+                     'raw-telemetry.json':raw, 'normalized.json':normalized,
+                     'l5-receipts.json':normalized['l5_receipts'],
+                     'l6-events.json':normalized['l6_context_events'],
+                     'joint-report.json':joint, 'paired-statistics.json':statistics,
+                     'acceptance.json':acceptance, 'provenance.json':provenance}
+        artifacts.update(supplemental_artifacts)
+        # Validate serialization before creating a finished directory. No task text or answers persisted.
+        rendered = {name:json.dumps(te._json_safe(value),indent=2,ensure_ascii=False,allow_nan=False)+'\n'
+                    for name,value in artifacts.items()}
+        if supplemental_artifacts:
+            rendered['fingerprints.json'] = json.dumps({
+                'algorithm': 'sha256', 'scope': 'all other files; fingerprint index excluded',
+                'files': {name:hashlib.sha256(content.encode()).hexdigest() for name,content in rendered.items()}
+            }, indent=2)+'\n'
+        phase = 'artifact_publication'
+        publish_artifacts(output, rendered)
+        return output
+    except Exception:
+        if not output.exists():
+            failed = {'manifest.json': {'manifest': raw_manifest},
+                      'schedule.json': {'tasks': schedule},
+                      'raw-telemetry.json': collector.bundle(),
+                      'failure.json': {'status':'aborted', 'phase':phase,
+                          'failure_class':'artifact_failure' if phase=='artifact_publication' else 'response_schema',
+                          'expected_task_count':len(ids), 'attempted_runs':run_number,
+                          'billing_status':'partial_or_unavailable', 'performance_candidate':False,
+                          'evidence_eligible':False, 'candidate_for_promotion':False, 'production_mutation':False}}
+            failed.update(supplemental_artifacts)
+            publish_artifacts(output, {name:json.dumps(value,allow_nan=False)+'\n' for name,value in failed.items()})
+        raise RunnerError('campaign finalization failed; no performance acceptance') from None
 
 
 def failure_category(exc):

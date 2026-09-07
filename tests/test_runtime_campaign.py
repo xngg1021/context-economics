@@ -113,3 +113,17 @@ class CampaignTests(unittest.TestCase):
                     self.assertEqual(env['GIT_CONFIG_NOSYSTEM'],'1')
                     self.assertEqual(env['GIT_CONFIG_GLOBAL'],os.devnull)
             self.assertTrue(all(os.environ[k]=='TEST-SECRET' for k in keys))
+
+    def test_finalization_failure_retains_collected_evidence(self):
+        m=er.local_manifest('finalize-failure','a'*40)
+        tasks=[{'task_id':t,'input':'2+2','expected_answer':'4'} for t in m.expected_task_ids]
+        with tempfile.TemporaryDirectory() as td, er.local_http_server() as url:
+            executor=er.LocalHTTPExecutor(url)
+            with patch.object(er.rt,'normalize',side_effect=ValueError('PRIVATE')):
+                with self.assertRaises(er.RunnerError):
+                    er.run_experiment(m,tasks,{'control':executor,'treatment':executor},td)
+            p=Path(td)/m.experiment_id
+            self.assertTrue(json.loads((p/'raw-telemetry.json').read_text())['events'])
+            self.assertEqual(json.loads((p/'failure.json').read_text())['phase'],'normalization_and_join')
+            self.assertFalse((p/'acceptance.json').exists())
+            self.assertNotIn('PRIVATE',''.join(f.read_text() for f in p.iterdir()))
