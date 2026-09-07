@@ -48,3 +48,15 @@ legacy additive semantics for replay only. Unversioned nonzero classified costs
 fail with a migration error; zero-classification old receipts remain readable.
 Public fixtures explicitly migrate their legacy independent charges to external
 costs. Runtime normalization always emits v2.
+
+Metadata validation recursively copies JSON mappings/lists/tuples, rejecting
+case-insensitive explicit private keys with hyphens/underscores normalized.
+Limits are 16 levels, 4096 nodes, and 64 KiB per payload. Values must be JSON-safe
+and finite. Returned bundles do not alias collector state. This is a forbidden-key
+policy, not semantic detection of secrets hidden under arbitrary safe names;
+adapters must still emit redacted identifiers and metadata.
+
+Tool categories are retrieval/filesystem/search/database/web/compute/action/other.
+`is_retrieval` controls accounting independently of category. For old envelopes,
+reacquisition automatically implies retrieval; explicitly setting it false for
+reacquisition fails. All normalized L5 receipts are reparsed before returning.
