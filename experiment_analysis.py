@@ -38,15 +38,17 @@ def _percentile(values: Sequence[float], q: float) -> float | None:
     return ordered[lo] if lo == hi else ordered[lo]*(hi-pos)+ordered[hi]*(pos-lo)
 
 
-def describe(values: Sequence[float]) -> dict:
-    if not values:
-        return {"count": 0, "mean": None, "median": None, "p50": None, "p95": None,
-                "min": None, "max": None, "wins": 0, "losses": 0, "ties": 0}
-    return {"count": len(values), "mean": mean(values), "median": median(values),
-            "p50": _percentile(values, .5), "p95": _percentile(values, .95),
-            "min": min(values), "max": max(values),
-            "wins": sum(x < 0 for x in values), "losses": sum(x > 0 for x in values),
-            "ties": sum(x == 0 for x in values)}
+def describe(values: Sequence[float], direction="descriptive_only") -> dict:
+    if direction not in {"lower_is_better", "higher_is_better", "descriptive_only"}:
+        raise AnalysisError("unknown metric direction")
+    out = {"count":len(values), "direction":direction,
+           "mean":mean(values) if values else None, "median":median(values) if values else None,
+           "p50":_percentile(values,.5), "p95":_percentile(values,.95),
+           "min":min(values) if values else None, "max":max(values) if values else None}
+    if direction != "descriptive_only":
+        sign = -1 if direction == "lower_is_better" else 1
+        out.update(wins=sum(x*sign > 0 for x in values), losses=sum(x*sign < 0 for x in values), ties=sum(x == 0 for x in values))
+    return out
 
 
 def bootstrap_mean_ci(values: Sequence[float], *, seed: int = 0, samples: int = 2000, confidence: float = .95) -> dict:
@@ -70,13 +72,19 @@ METRICS = (
     "ttft_delta_ms", "wall_time_delta_ms",
 )
 
+METRIC_DIRECTIONS = {metric:"descriptive_only" for metric in METRICS}
+METRIC_DIRECTIONS.update({metric:"lower_is_better" for metric in (
+    "cost_delta_usd", "provider_bill_delta_usd", "reacquisition_call_delta",
+    "retry_delta", "ttft_delta_ms", "wall_time_delta_ms")})
+METRIC_DIRECTIONS.update({metric:"higher_is_better" for metric in ("success_delta", "task_score_delta")})
+
 
 def paired_statistics(receipts: Sequence[te.RunReceipt], control: str, treatment: str, *, seed: int = 0) -> dict:
-    pairing = te.paired_task_report(receipts, control, treatment)
+    pairing, _ = te.extract_exact_pairs(receipts, control, treatment)
     stats = {}
     for metric in METRICS:
         values = [float(row[metric]) for row in pairing["deltas"] if row[metric] is not None]
-        stats[metric] = {**describe(values), "bootstrap_mean_ci": bootstrap_mean_ci(values, seed=seed)}
+        stats[metric] = {**describe(values, METRIC_DIRECTIONS[metric]), "bootstrap_mean_ci": bootstrap_mean_ci(values, seed=seed)}
     return {"scope": "paired-descriptive-statistics-not-production-proof", **pairing, "statistics": stats}
 
 

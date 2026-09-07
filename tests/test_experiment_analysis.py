@@ -47,3 +47,13 @@ class AnalysisTests(unittest.TestCase):
 
 
 if __name__ == "__main__": unittest.main()
+
+class MetricDirectionTests(unittest.TestCase):
+    def test_higher_lower_and_descriptive(self):
+        from dataclasses import replace
+        rows=[replace(receipt('a','c',cost=2),task_score=0),replace(receipt('a','t',cost=1),task_score=1)]
+        stats=ea.paired_statistics(rows,'c','t')['statistics']
+        self.assertEqual(stats['task_score_delta']['wins'],1)
+        self.assertEqual(stats['cost_delta_usd']['wins'],1)
+        for metric in ('cached_input_token_delta','compression_call_delta','input_token_delta','tool_call_delta'):
+            self.assertNotIn('wins',stats[metric])

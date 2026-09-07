@@ -45,6 +45,16 @@ def _loss(row: Mapping[str, object], policy: ac.ControllerPolicy) -> float:
 def calibrate(rows: Sequence[Mapping[str, object]], grid: Mapping[str, Sequence[float]], *, min_train=3, min_holdout=2) -> dict:
     if set(grid) != {"base_step_fraction", "max_step_fraction", "deadband"}:
         raise CalibrationError("grid must contain base_step_fraction, max_step_fraction, deadband")
+    policies = []
+    for name, values in grid.items():
+        if not isinstance(values, (list, tuple)) or not values:
+            raise CalibrationError("grid axes must be non-empty lists/tuples")
+    for base, maximum, deadband in itertools.product(grid["base_step_fraction"], grid["max_step_fraction"], grid["deadband"]):
+        try:
+            policy = ac.ControllerPolicy.from_mapping({"base_step_fraction":base, "max_step_fraction":maximum, "deadband":deadband})
+        except ac.ControlError as exc:
+            raise CalibrationError(str(exc)) from exc
+        policies.append((base, maximum, deadband, policy))
     ids = {"train": set(), "holdout": set()}
     for row in rows:
         task = row.get("task_id"); split = row.get("split")
@@ -55,11 +65,7 @@ def calibrate(rows: Sequence[Mapping[str, object]], grid: Mapping[str, Sequence[
     if len(ids["train"]) < min_train or len(ids["holdout"]) < min_holdout:
         return {"status": "insufficient evidence", "train_tasks": len(ids["train"]), "holdout_tasks": len(ids["holdout"])}
     candidates = []
-    for base, maximum, deadband in itertools.product(grid["base_step_fraction"], grid["max_step_fraction"], grid["deadband"]):
-        for value in (base, maximum, deadband):
-            if isinstance(value, bool) or not isinstance(value, (int,float)) or not math.isfinite(value): raise CalibrationError("grid values must be finite numeric")
-        if base > maximum: continue
-        policy = ac.ControllerPolicy(base_step_fraction=float(base), max_step_fraction=float(maximum), deadband=float(deadband))
+    for base, maximum, deadband, policy in policies:
         train_loss = mean(_loss(row, policy) for row in rows if row["split"] == "train")
         candidates.append((train_loss, base, maximum, deadband, policy))
     if not candidates: raise CalibrationError("grid contains no valid candidates")

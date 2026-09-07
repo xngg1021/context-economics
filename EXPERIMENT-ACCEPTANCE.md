@@ -45,3 +45,10 @@ only explicit `allow_estimated=True` admits estimates (reported in output).
 Synthetic/loopback evidence remains shadow-only. Eligibility is structural
 validation of supplied provenance, not authentication of the caller's claims or
 proof of statistical superiority. No production mutation is performed.
+
+Metric direction is explicit: success/score higher is better; cost, retry,
+reacquisition and latency lower is better. Token/cache/compression/tool counts
+are descriptive only and have no win/loss labels. Calibration validates every
+Cartesian grid candidate through ControllerPolicy.from_mapping before checking
+sample sufficiency. Fractions and deadband are in [0,1], base <= maximum;
+invalid values or combinations fail the entire grid instead of being skipped.
