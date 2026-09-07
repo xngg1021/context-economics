@@ -1,4 +1,4 @@
-name: L6 documentation one-shot
+name: L6 final one-shot
 on:
   push:
     branches:
@@ -6,7 +6,7 @@ on:
 permissions:
   contents: write
 jobs:
-  sync:
+  patch:
     if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -17,29 +17,9 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.13'
-      - name: Repair one-shot README command anchor
-        run: |
-          python - <<'PY'
-          from pathlib import Path
-          p = Path('update_l6_docs.py')
-          text = p.read_text(encoding='utf-8')
-          idx = text.index('"README reproducibility"')
-          start = text.rfind('    text = replace_once(', 0, idx)
-          end = text.index('    write("README.md", text)', idx)
-          replacement = r"""    marker = "  --treatment aggressive-compression\n```"
-              replacement = r'''  --treatment aggressive-compression
-          python adaptive_control.py telemetry \
-            --events fixtures/context_access_events.json
-          python adaptive_control.py budget \
-            --state fixtures/context_budget_state.json
-          ```'''
-              text = replace_once(text, marker, replacement, "README reproducibility")
-          """
-          p.write_text(text[:start] + replacement + text[end:], encoding='utf-8', newline='\n')
-          PY
-      - name: Generate current L6 documentation
-        run: python update_l6_docs.py
-      - name: Validate generated tree
+      - name: Apply explicit prefetch coverage semantics
+        run: python patch_prefetch_coverage.py
+      - name: Validate complete L6 tree
         run: |
           python -m unittest discover -s tests -v
           python model.py
@@ -49,12 +29,14 @@ jobs:
           python adaptive_control.py residency --events fixtures/context_access_events.json --catalog fixtures/context_assets.json --budget 14 --min-demand-tasks 4 --min-asset-demands 2
           python adaptive_control.py prefetch --events fixtures/context_access_events.json --catalog fixtures/context_assets.json --seed repo-map --budget 4 --min-seed-demands 3 --min-joint-tasks 2
           python adaptive_control.py budget --state fixtures/context_budget_state.json
+          python adaptive_control.py locator --locator-units 20 --carry-cost 0.1 --fetch-probability 0.4 --search-avoided 8 --fetch-cost 0.5
+          python adaptive_control.py amplification --mutation-id ci-demo --semantic-source-units 2 --storage-bytes-changed 20 --recomputed-tokens 10 --compute-ms 30 --invalidated-cache-tokens 40 --derived-writes 5
+          python adaptive_control.py share --base-units 100 --consumers 3 --private-delta-units 10
           git diff --check
-      - name: Commit generated docs
+      - name: Commit final L6 code patch
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git checkout -- .github/workflows/validate.yml
-          git add README.md CHANGELOG.md PROVENANCE.md L5-task-economics.md tests/test_docs.py
-          git commit -m 'docs: wire L6 control plane into current repository surface'
+          git add adaptive_control.py tests/test_adaptive_control.py
+          git commit -m 'fix: make L6 prefetch coverage explicitly labeled'
           git push origin HEAD:chat/context-l6-adaptive-control-20260907
