@@ -24,6 +24,7 @@ class BootstrapTests(unittest.TestCase):
         (self.source/'.gitignore').write_text('__pycache__/\n*.pyc\n')
         (self.source/'provider_runtime.py').write_text(
             "import os\nassert not os.environ.get('OPENAI_API_KEY'), 'secret delivered before import'\n"
+            "import select,sys\nassert not select.select([sys.stdin],[],[],0)[0], 'secret queued before import'\n"
             "def check(): return bool(os.environ.get('OPENAI_API_KEY'))\n")
         (self.source/'runtime_campaign.py').write_text(
             "import json\nimport provider_runtime\n"

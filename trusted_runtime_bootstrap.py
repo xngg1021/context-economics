@@ -23,9 +23,11 @@ _SECRETS = {name:os.environ.pop(name) for name in _NAMES if name in os.environ}
 import argparse
 import hashlib
 import json
+import queue
 import shutil
 import subprocess
 import tempfile
+import threading
 from pathlib import Path
 
 CHILD = r'''
@@ -37,6 +39,7 @@ sys.path.insert(0, sys.argv[1])
 import runtime_campaign as campaign
 campaign._BOOTSTRAP_SOURCE_IDENTITY = {
     'repository_commit':sys.argv[2], 'repository_tree':sys.argv[3]}
+print('CONTEXT_SOURCE_IMPORTED_V1', flush=True)
 secret = json.load(sys.stdin)
 if set(secret) not in ({'OPENAI_API_KEY'}, {'ANTHROPIC_API_KEY'}):
     raise SystemExit(2)
@@ -104,15 +107,25 @@ def launch(source, campaign_path, output_root, expected_commit, expected_campaig
         # change the child's code. Every directory is private to this launcher.
         # Pin the bundle bytes too, eliminating a file-swap between checks/run.
         frozen = Path(td)/'campaign.json';frozen.write_text(json.dumps(bundle));frozen.chmod(0o400)
-        child = subprocess.run([sys.executable,'-I','-S','-B','-c',CHILD,str(snapshot),
+        with subprocess.Popen([sys.executable,'-I','-S','-B','-c',CHILD,str(snapshot),
             commit,tree,str(frozen),str(output_root)],cwd=snapshot,env=environment,
-            input=json.dumps({credential_name:_SECRETS[credential_name]}),
-            capture_output=True,text=True)
+            stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=subprocess.PIPE,text=True) as child:
+            ready=queue.Queue(maxsize=1)
+            threading.Thread(target=lambda:ready.put(child.stdout.readline(256)),daemon=True).start()
+            try:
+                if ready.get(timeout=30) != 'CONTEXT_SOURCE_IMPORTED_V1\n':
+                    raise ValueError('validated_import_not_ready')
+                # Do not queue the key in the pipe while modules are importing.
+                stdout,_ = child.communicate(json.dumps({credential_name:_SECRETS[credential_name]}),timeout=3000)
+                returncode=child.returncode
+            except Exception:
+                child.kill();child.communicate()
+                raise ValueError('isolated_child_failed') from None
         _SECRETS.clear()
         # Never forward native stdout/stderr from a failed import or execution.
-        if child.returncode:
+        if returncode:
             return {'status':'BLOCKED','operation':'run','evidence_upgraded':False}
-        parsed=json.loads(child.stdout)
+        parsed=json.loads(stdout)
         if parsed != {'status':'complete','operation':'run','production_mutation':False}:
             raise ValueError('unexpected_child_result')
         return parsed
