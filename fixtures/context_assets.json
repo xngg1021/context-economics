@@ -1,0 +1,59 @@
+{
+  "schema_version": 1,
+  "note": "Synthetic context-asset catalog; cost units are explicit arbitrary experiment units.",
+  "assets": {
+    "repo-map": {
+      "asset_type": "repo_map",
+      "resident_units": 6,
+      "carry_cost_units_per_task": 0.2,
+      "currently_resident": true,
+      "protected": true,
+      "counterfactual_miss_cost_units": 2.0,
+      "locator": "repo.map",
+      "locator_units": 20,
+      "locator_carry_cost_units_per_task": 0.05,
+      "search_avoided_units": 6.0,
+      "prefetch_units": 1,
+      "prefetch_cost_units": 0.05,
+      "prefetch_value_units": 2.0,
+      "shareable_immutable": true
+    },
+    "payment-file": {
+      "asset_type": "document",
+      "resident_units": 8,
+      "carry_cost_units_per_task": 0.5,
+      "locator": "src/payment.py",
+      "locator_units": 18,
+      "locator_carry_cost_units_per_task": 0.05,
+      "search_avoided_units": 8.0,
+      "prefetch_units": 2,
+      "prefetch_cost_units": 0.2,
+      "prefetch_value_units": 6.0,
+      "shareable_immutable": true
+    },
+    "payment-tests": {
+      "asset_type": "document",
+      "resident_units": 5,
+      "carry_cost_units_per_task": 0.4,
+      "locator": "tests/test_payment.py",
+      "locator_units": 18,
+      "locator_carry_cost_units_per_task": 0.05,
+      "search_avoided_units": 10.0,
+      "prefetch_units": 2,
+      "prefetch_cost_units": 0.2,
+      "prefetch_value_units": 9.0,
+      "shareable_immutable": true
+    },
+    "stale-config": {
+      "asset_type": "memory",
+      "resident_units": 3,
+      "carry_cost_units_per_task": 0.2,
+      "currently_resident": true,
+      "counterfactual_miss_cost_units": 1.5,
+      "locator": "profile/config.md",
+      "locator_units": 16,
+      "locator_carry_cost_units_per_task": 0.04,
+      "search_avoided_units": 3.0
+    }
+  }
+}

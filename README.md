@@ -2,7 +2,7 @@
 
 > 起始研究：2026-08-19，SJF × Hermes  
 > correctness hardening：2026-09-07  
-> 当前研究对象：LLM / agent 在输入、缓存、压缩、工具、记忆、重取、重试、延迟与任务成功之间的成本—质量权衡。
+> 当前研究对象：LLM / agent 在输入、缓存、压缩、工具、记忆、重取、重试、延迟、任务成功与自适应上下文控制之间的成本—质量权衡。
 
 本仓库把上下文视为一种会被反复携带、缓存、压缩、重取和重新计算的运行资产。目标不是单纯“省 token”，而是把 **provider 定价 → serving/KV → 压缩算法 → harness 调度 → 持久记忆 → 任务经济学** 放进同一个可验证框架。
 
@@ -20,7 +20,7 @@
 
 `PROVENANCE.md` 固定本轮版本身份和来源边界；`pricing-snapshot.json` 保存机器可读的定价快照。L0–L3 的 2026-08-19 文档作为历史研究快照保留，9 月 7 日的新材料和勘误汇总在 `RESEARCH-ADDENDUM-2026-09-07.md`。
 
-## 1. 六层结构
+## 1. 七层结构
 
 ```text
 L0 Pricing
@@ -42,6 +42,10 @@ L4 Memory & Profile
 
 L5 Task Economics & Observability
    billed cost + tool/reacquisition/retry/latency/failure + task success
+
+L6 Adaptive Context Control
+   admission / residency / locator / prefetch / vector budget feedback /
+   mutation amplification / shared immutable base
 ```
 
 ## 2. 核心成本模型
@@ -140,6 +144,10 @@ python task_economics.py \
   --receipts fixtures/run_receipts.json \
   --control no-compression \
   --treatment aggressive-compression
+python adaptive_control.py telemetry \
+  --events fixtures/context_access_events.json
+python adaptive_control.py budget \
+  --state fixtures/context_budget_state.json
 ```
 
 它按 policy 聚合：
@@ -240,7 +248,62 @@ cache-hit share
 
 真正有意义的 `theta*` 应该在这一层产生。
 
-## 9. 可复现性与 CI
+## 9. `adaptive_control.py`：L6 变成可运行 shadow control plane
+
+L6 将前面各层的观测量变成一组**有界、非自动执行**的 context-control 建议。它不使用 THM 的 T0–T3 作为自己的层级；Context Economics 的 `L0–L6` 是分析/控制 Layer，THM 的 `T0–T3` 是独立 memory residency/access Tier。
+
+当前控制面覆盖：
+
+```text
+context_hit / soft_miss / hard_miss / stale_hit
+admission / residency
+locator-token economics
+speculative prefetch
+vector budget feedback
+context mutation amplification
+immutable shared base + private delta
+```
+
+其中核心控制向量是：
+
+```text
+u_t = (
+  B_history,
+  B_retrieval,
+  B_memory,
+  B_tools,
+  B_repo_map,
+  B_prefetch,
+  r_compression_retained
+)
+```
+
+运行 synthetic reference：
+
+```bash
+python adaptive_control.py telemetry \
+  --events fixtures/context_access_events.json
+
+python adaptive_control.py residency \
+  --events fixtures/context_access_events.json \
+  --catalog fixtures/context_assets.json \
+  --budget 14 \
+  --min-demand-tasks 4 \
+  --min-asset-demands 2
+
+python adaptive_control.py prefetch \
+  --events fixtures/context_access_events.json \
+  --catalog fixtures/context_assets.json \
+  --seed repo-map \
+  --budget 4
+
+python adaptive_control.py budget \
+  --state fixtures/context_budget_state.json
+```
+
+完整定义与边界见 `L6-adaptive-context-control.md`。当前 L6 的证据等级仍是 `analytic + simulation/contract`；没有真实 held-out runtime/task A/B 时，不把 shadow proposal 称为生产最优，也不自动写回 harness/provider 配置。
+
+## 10. 可复现性与 CI
 
 仓库核心验证只依赖 Python 标准库：
 

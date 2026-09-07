@@ -42,6 +42,31 @@ class DocumentationContractTests(unittest.TestCase):
         self.assertIn("Synthetic, non-private fixture", fixture)
         self.assertIn("Synthetic run receipts", receipts)
 
+    def test_l6_control_layer_exists_and_stays_distinct_from_thm_tiers(self):
+        readme = (ROOT / "README.md").read_text(encoding="utf-8")
+        l6 = (ROOT / "L6-adaptive-context-control.md").read_text(encoding="utf-8")
+        self.assertIn("L6 Adaptive Context Control", readme)
+        self.assertIn("adaptive_control.py", readme)
+        self.assertIn("L6 不是 THM 的 T0–T3", l6)
+        self.assertIn("Admission、Residency、Prefetch 与 Budget Control", l6)
+        self.assertTrue((ROOT / "adaptive_control.py").is_file())
+
+    def test_l6_public_fixtures_are_synthetic(self):
+        for name in (
+            "context_access_events.json",
+            "context_assets.json",
+            "context_budget_state.json",
+        ):
+            text = (ROOT / "fixtures" / name).read_text(encoding="utf-8")
+            self.assertIn("Synthetic", text)
+
+    def test_l6_docs_preserve_shadow_acceptance_boundary(self):
+        l6 = (ROOT / "L6-adaptive-context-control.md").read_text(encoding="utf-8")
+        provenance = (ROOT / "PROVENANCE.md").read_text(encoding="utf-8")
+        self.assertIn("shadow/advisory only", l6)
+        self.assertIn("runtime-A/B", l6)
+        self.assertIn("task-economic", provenance)
+
 
 if __name__ == "__main__":
     unittest.main()

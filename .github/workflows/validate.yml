@@ -31,3 +31,48 @@ jobs:
           --receipts fixtures/run_receipts.json
           --control no-compression
           --treatment aggressive-compression
+      - name: L6 telemetry smoke test
+        run: python adaptive_control.py telemetry --events fixtures/context_access_events.json
+      - name: L6 residency smoke test
+        run: >-
+          python adaptive_control.py residency
+          --events fixtures/context_access_events.json
+          --catalog fixtures/context_assets.json
+          --budget 14
+          --min-demand-tasks 4
+          --min-asset-demands 2
+      - name: L6 prefetch smoke test
+        run: >-
+          python adaptive_control.py prefetch
+          --events fixtures/context_access_events.json
+          --catalog fixtures/context_assets.json
+          --seed repo-map
+          --budget 4
+          --min-seed-demands 3
+          --min-joint-tasks 2
+      - name: L6 budget smoke test
+        run: python adaptive_control.py budget --state fixtures/context_budget_state.json
+      - name: L6 locator economics smoke test
+        run: >-
+          python adaptive_control.py locator
+          --locator-units 20
+          --carry-cost 0.1
+          --fetch-probability 0.4
+          --search-avoided 8
+          --fetch-cost 0.5
+      - name: L6 mutation amplification smoke test
+        run: >-
+          python adaptive_control.py amplification
+          --mutation-id ci-demo
+          --semantic-source-units 2
+          --storage-bytes-changed 20
+          --recomputed-tokens 10
+          --compute-ms 30
+          --invalidated-cache-tokens 40
+          --derived-writes 5
+      - name: L6 immutable sharing smoke test
+        run: >-
+          python adaptive_control.py share
+          --base-units 100
+          --consumers 3
+          --private-delta-units 10

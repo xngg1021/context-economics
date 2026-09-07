@@ -203,6 +203,20 @@ latency
 
 所以 run receipt 必须和 `PROVENANCE.md` / `pricing-snapshot.json` 一样版本化。
 
+### 当前 receipt parser 的故障安全边界
+
+`task_economics.py` 现在把上面的 schema 当作数据合同，而不是宽松 JSON：
+
+- `success` 必须是真正 boolean，字符串 `"false"` 不会被 Python truthiness 错算为成功；
+- 未知字段直接失败，避免 `provider_bil_usd` 之类 typo 被静默丢弃；
+- `run_id` 必须唯一；
+- token、call、cost、latency 必须是有限且非负的对应类型；
+- 当前 schema 下 `cached_input_tokens <= input_tokens`；
+- `reacquisition_calls <= retrieval_calls`；
+- pairing report 显式报告 missing arm、duplicate arm 与 paired coverage，不把未配对任务静默藏掉。
+
+聚合结果同时给出 token/cache、task score、p50/p95 TTFT/wall time 和 failure-class 计数。CLI 输出仍标记为 `observed-run-receipts-not-causal-inference`：严格 schema 只能提高数据完整性，不能替代实验设计。
+
 ## 五、reacquisition 怎么定义
 
 不能把所有 retrieval 都算成“压缩造成的重取”。
