@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "note": "Synthetic run receipts; no provider or private task data.",
+  "note": "Synthetic run receipts; no provider or private task data. Migrated legacy independent classified charges into external_cost_usd; attribution fields are non-additive.",
   "runs": [
     {
       "run_id": "a1",
@@ -24,7 +24,11 @@
       "compression_calls": 0,
       "ttft_ms": 900,
       "wall_time_ms": 10000,
-      "notes": ["Synthetic run receipts"]
+      "notes": [
+        "Synthetic run receipts"
+      ],
+      "cost_ledger_version": 2,
+      "external_cost_usd": 0
     },
     {
       "run_id": "a2",
@@ -47,7 +51,9 @@
       "retry_count": 0,
       "compression_calls": 0,
       "ttft_ms": 1000,
-      "wall_time_ms": 11000
+      "wall_time_ms": 11000,
+      "cost_ledger_version": 2,
+      "external_cost_usd": 0
     },
     {
       "run_id": "b1",
@@ -71,7 +77,9 @@
       "retry_count": 0,
       "compression_calls": 2,
       "ttft_ms": 1200,
-      "wall_time_ms": 13000
+      "wall_time_ms": 13000,
+      "cost_ledger_version": 2,
+      "external_cost_usd": 0.1
     },
     {
       "run_id": "b2",
@@ -98,7 +106,9 @@
       "compression_calls": 2,
       "ttft_ms": 1500,
       "wall_time_ms": 18000,
-      "failure_class": "task-failure"
+      "failure_class": "task-failure",
+      "cost_ledger_version": 2,
+      "external_cost_usd": 0.32
     }
   ]
 }

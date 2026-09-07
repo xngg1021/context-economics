@@ -355,6 +355,7 @@ def normalize(events: Sequence[Envelope]) -> dict[str, object]:
             "provider_bill_usd": sum(q["provider_bill_usd"] for q in requests),
             "provider_bill_source": ";".join(sorted({str(q["provider_bill_source"]) for q in requests})),
             "billing_status": next(iter(billing_statuses)) if len(billing_statuses) == 1 else "estimated",
+            "cost_ledger_version": 2, "external_cost_usd": 0.0,
             "tool_cost_usd": sum(q["cost_usd"] for q in tools),
             "reacquisition_cost_usd": sum(q["cost_usd"] for q in tools if q["whether_reacquisition"]),
             "retry_cost_usd": sum(q["cost_usd"] for q in tools if q["retry"]),

@@ -37,3 +37,14 @@ Future OpenAI, Anthropic, Gemini, Kimi, Hermes, and coding-agent adapters should
 map native receipts into these semantics without pretending every provider has
 cache-write tokens, storage fees, cache keys, or identical long-context tiers.
 
+
+Cost ledger v2 adds provider_bill_usd, tool_cost_usd, external_cost_usd,
+latency_cost_usd and failure_cost_usd exactly once. Reacquisition/retry costs
+are overlapping attribution subsets and are never added again. External costs
+must be independent charges absent from provider/tool costs. Estimated provider
+billing retains its label; the historical observed_cost_usd property name is
+not a claim that an estimated bill was observed. Explicit ledger v1 preserves
+legacy additive semantics for replay only. Unversioned nonzero classified costs
+fail with a migration error; zero-classification old receipts remain readable.
+Public fixtures explicitly migrate their legacy independent charges to external
+costs. Runtime normalization always emits v2.

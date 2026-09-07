@@ -100,6 +100,8 @@ class RunReceipt:
     provider_bill_usd: float = 0.0
     provider_bill_source: str | None = None
     billing_status: str | None = None
+    cost_ledger_version: int = 2
+    external_cost_usd: float = 0.0
     tool_cost_usd: float = 0.0
     reacquisition_cost_usd: float = 0.0
     retry_cost_usd: float = 0.0
@@ -125,8 +127,9 @@ class RunReceipt:
         return (
             self.provider_bill_usd
             + self.tool_cost_usd
-            + self.reacquisition_cost_usd
-            + self.retry_cost_usd
+            + self.external_cost_usd
+            + (self.reacquisition_cost_usd + self.retry_cost_usd
+               if self.cost_ledger_version == 1 else 0.0)
             + self.latency_cost_usd
             + self.failure_cost_usd
         )
@@ -144,6 +147,12 @@ class RunReceipt:
         missing = [name for name in required if name not in row]
         if missing:
             raise ReceiptError("missing required receipt fields: " + ", ".join(missing))
+
+        version = row.get("cost_ledger_version", 2)
+        if type(version) is not int or version not in {1, 2}:
+            raise ReceiptError("cost_ledger_version must be 1 (legacy additive) or 2 (attribution)")
+        if "cost_ledger_version" not in row and any(row.get(k, 0) != 0 for k in ("reacquisition_cost_usd", "retry_cost_usd")):
+            raise ReceiptError("ambiguous classified costs: explicitly set cost_ledger_version=1 for legacy additive or migrate to 2")
 
         strings = {}
         for name in (
@@ -209,6 +218,7 @@ class RunReceipt:
 
         numeric_names = (
             "provider_bill_usd",
+            "external_cost_usd",
             "tool_cost_usd",
             "reacquisition_cost_usd",
             "retry_cost_usd",
@@ -232,6 +242,7 @@ class RunReceipt:
             task_id=task_id,
             policy_id=policy_id,
             success=_bool(row["success"], "success"),
+            cost_ledger_version=version,
             task_score=task_score,
             ttft_ms=ttft_ms,
             notes=_notes(row.get("notes")),
