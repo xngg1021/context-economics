@@ -210,7 +210,7 @@ success_rate
 | [`CHANGELOG.md`](CHANGELOG.md) | Version-by-version history; implementation chronology lives here, not on the homepage |
 | [`VERSIONING.md`](VERSIONING.md) | Version policy and milestone mapping |
 | [`PROVENANCE.md`](PROVENANCE.md) | Evidence classes, source identity, and research provenance |
-| [`FINAL-EVIDENCE-BOUNDARY.md`](FINAL-EVIDENCE-BOUNDARY.md) | Exact 0.6.x closeout boundary and remaining empirical gaps |
+| [`FINAL-EVIDENCE-BOUNDARY.md`](FINAL-EVIDENCE-BOUNDARY.md) | Current 0.6.x evidence boundary and remaining empirical gaps |
 | [`RUNTIME-INSTRUMENTATION.md`](RUNTIME-INSTRUMENTATION.md) | Canonical runtime telemetry schema and collection semantics |
 | [`RUNTIME-EXPERIMENT-CONTRACT.md`](RUNTIME-EXPERIMENT-CONTRACT.md) | Version-pinned experiment join and completeness contract |
 | [`EXPERIMENT-ACCEPTANCE.md`](EXPERIMENT-ACCEPTANCE.md) | Statistical/evidence acceptance boundaries |
@@ -234,7 +234,7 @@ Ordinary mid-session Hermes memory writes persist to disk but do not rewrite the
 
 ## Validation
 
-The accepted 0.6.0 engineering milestone passed the full Python 3.11 / 3.13 validation matrix after merge. Current docs/productization changes remain subject to the same repository CI before acceptance.
+The supported standard-library engineering surface is validated on Python 3.11 and 3.13. Release-specific CI identities and acceptance chronology are kept in [`CHANGELOG.md`](CHANGELOG.md) rather than on the homepage.
 
 ## Version history
 
